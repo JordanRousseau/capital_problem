@@ -93,10 +93,12 @@ A step by step series of examples that tell you how to get a development env run
 
 6. **Set up environnement variables**
 
-   You need to set a file `.env` with secrets and variables of the project at his root _(`invoice process\`)_. Here is a blank sample:
+   You need to set a file `.env` with secrets and variables of the project at his root _(`invoice process\`)_. Here is the OSX and linux sample:
 
    ```sh
-   # empty
+   # files path
+   CLIMATE_PATH = .data/Climat.xlsx
+   REFERENCE_CLIMATE_PATH = .data/Savukoski kirkonkyla.xlsx
    ```
 
 ## Running the tests
