@@ -74,6 +74,12 @@ A step by step series of examples that tell you how to get a development env run
    We need to use environnement variables, we can achieve that with the package python-decouple that can read `.env` files. Autonomous documentation is achieve with Sphinx. To use the Google APIs, we need the Google python client. Install all the project dependencies in the virtual python environnement with:
 
    ```sh
+   python setup.py install
+   ```
+
+   or:
+
+   ```sh
    pip install -r requirements.txt
    ```
 
@@ -106,6 +112,7 @@ A step by step series of examples that tell you how to get a development env run
 You can run the tests with the command:
 
 ```sh
+python setup.py test
 ```
 
 ## Generate Documentation
@@ -113,6 +120,7 @@ You can run the tests with the command:
 Generate documentation with the command:
 
 ```sh
+python setup.py docs
 ```
 
 ## Deployment
