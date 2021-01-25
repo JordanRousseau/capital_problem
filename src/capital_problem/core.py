@@ -4,28 +4,70 @@ import numpy
 import dashboard
 
 
-def summary(dataframe: pandas.DataFrame):
-    """Make mean by column
-
+def column_summary(
+    dataframe: pandas.DataFrame, print_: bool = True, columns_meaning: str = "Month"
+):
+    """Get Mean, Standard Deviation, Minimum and Maximum for dataframe's columns
     Args:
         dataframe (pandas.DataFrame): dataframe of columns (NaN values are not a problem)
+        print_ (bool, optional): Print summary infos on console. Defaults to True.
+        columns_meaning (str, optional): Meaning for all the columns, it will appears on the summary headers. Defaults to "Month".
 
     Returns:
-        list: list of header and mean associated with
+        dict: contains headers and data `{"summary_headers": list(str), "summary_data": list(list(str, float, float, float, float))}`
     """
-    headers = list(dataframe.columns.values)
+
+    # Convert the dataframe to beatiful numpy array
     numpy_array = dataframe.to_numpy().astype(float)
+
+    # Extract headers
+    dataframe_headers = list(dataframe.columns.values)
+
+    # Extract mean
     means = numpy.nanmean(numpy_array, axis=0)
+
+    # Extract standard deviation
     stds = numpy.nanstd(numpy_array, axis=0)
+
+    # Initiate summary data and headers lists
     summary = []
+    summary_headers = [
+        columns_meaning,
+        "Mean",
+        "Standard Deviation",
+        "Minimum",
+        "Maximum",
+    ]
 
-    print("Summary:\n")
+    if print_:
+        print(columns_meaning, "Summary:\n")
 
-    for i, header in enumerate(headers, start=0):
-        print(header, ": { mean :", str(means[i]), ", std :", str(stds[i]), "}")
-        summary.append([header, means[i], stds[i]])
+    # Itterate on columns
+    for index, header in enumerate(dataframe_headers, start=0):
 
-    return summary
+        # Extract minimum
+        current_min = numpy.nanmin(numpy_array[:, index])
+
+        # Extract maximum
+        current_max = numpy.nanmax(numpy_array[:, index])
+        summary.append([header, means[index], stds[index], current_min, current_max])
+
+        # Print infos
+        if print_:
+            print(
+                header,
+                ": { mean :",
+                str(means[index]),
+                ", std :",
+                str(stds[index]),
+                ", min :",
+                str(current_min),
+                ", max :",
+                str(current_max),
+                "}",
+            )
+
+    return {"summary_headers": summary_headers, "summary_data": summary}
 
 
 def run():
@@ -47,7 +89,7 @@ def run():
     print(reference_spreadsheets)
 
     # Make mean of month columns
-    month_summary = summary(
+    month_summary = column_summary(
         dataframe=reference_spreadsheets.iloc[
             :, list(map(int, str(config("MONTH_COLUMNS")).split(",")))
         ]
@@ -56,8 +98,8 @@ def run():
     dashboard.build_app_report(
         [
             dashboard.build_table_component(
-                headers=["Month", "Mean", "Standard Deviation"],
-                data=month_summary,
+                headers=month_summary.get("summary_headers", []),
+                data=month_summary.get("summary_data", []),
                 id="summary-table",
             ),
         ]
