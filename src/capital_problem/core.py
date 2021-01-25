@@ -14,8 +14,9 @@ def summary(dataframe: pandas.DataFrame):
         list: list of header and mean associated with
     """
     headers = list(dataframe.columns.values)
-    means = numpy.nanmean(dataframe.to_numpy(), axis=0)
-    stds = numpy.nanstd(dataframe.to_numpy(), axis=0)
+    numpy_array = dataframe.to_numpy().astype(float)
+    means = numpy.nanmean(numpy_array, axis=0)
+    stds = numpy.nanstd(numpy_array, axis=0)
     summary = []
 
     print("Summary:\n")
