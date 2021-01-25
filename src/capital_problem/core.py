@@ -1,10 +1,10 @@
 import pandas
 from decouple import config
 import numpy
-from dashboard import build_app_report
+import dashboard
 
 
-def mean(dataframe: pandas.DataFrame):
+def summary(dataframe: pandas.DataFrame):
     """Make mean by column
 
     Args:
@@ -15,15 +15,16 @@ def mean(dataframe: pandas.DataFrame):
     """
     headers = list(dataframe.columns.values)
     means = numpy.nanmean(dataframe.to_numpy(), axis=0)
-    means_enriched = []
+    stds = numpy.nanstd(dataframe.to_numpy(), axis=0)
+    summary = []
 
-    print("Moyenne par mois:\n")
+    print("Summary:\n")
 
-    for i, mean in enumerate(means, start=0):
-        print(headers[i] + " : " + str(mean))
-        means_enriched.append([headers[i], mean])
+    for i, header in enumerate(headers, start=0):
+        print(header, ": { mean :", str(means[i]), ", std :", str(stds[i]), "}")
+        summary.append([header, means[i], stds[i]])
 
-    return means_enriched
+    return summary
 
 
 def run():
@@ -45,13 +46,21 @@ def run():
     print(reference_spreadsheets)
 
     # Make mean of month columns
-    month_mean = mean(
+    month_summary = summary(
         dataframe=reference_spreadsheets.iloc[
             :, list(map(int, str(config("MONTH_COLUMNS")).split(",")))
         ]
     )
 
-    build_app_report([]).run_server(debug=True)
+    dashboard.build_app_report(
+        [
+            dashboard.build_table_component(
+                headers=["Month", "Mean", "Standard Deviation"],
+                data=month_summary,
+                id="summary-table",
+            ),
+        ]
+    ).run_server(debug=True)
 
 
 if __name__ == "__main__":

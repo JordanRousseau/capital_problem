@@ -75,3 +75,33 @@ body {
   font-weight: bold;
   color: #079a82;
 }
+
+.visuals {
+  max-width: 912px;
+  margin: auto;
+  padding-top: 10px;
+}
+
+table > tbody > tr > th {
+  background-color: #222222 !important;
+  color: white;
+  font-family: "Lato", sans-serif;
+  font-weight: 400 !important;
+}
+
+table > tbody > tr > td {
+  font-family: "Lato", sans-serif;
+  font-weight: 100 !important;
+}
+
+/* Tentative de selection de la totalité de la ligne (marche po pour l'instant)
+
+tr:has(td.cell--selected) > td {
+  border-bottom-width: 1px !important;
+  border-bottom-style: solid !important;
+  border-bottom-color: hotpink !important;
+  border-top-width: 1px !important;
+  border-top-style: solid !important;
+  border-top-color: hotpink !important;
+  background-color: rgba(255, 65, 54, 0.2) !important;
+}*/

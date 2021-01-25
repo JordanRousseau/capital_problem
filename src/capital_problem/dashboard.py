@@ -2,20 +2,21 @@ import dash
 import dash_core_components as dcc
 import dash_html_components as html
 import dash_table
+import numpy
 
 
 def build_app_report(dash_components_list: list):
     external_stylesheets = [
         {
             "href": "https://fonts.googleapis.com/css2?"
-            "family=Lato:wght@400;700&display=swap",
+            "family=Lato:wght@100;400;700&display=swap",
             "rel": "stylesheet",
         },
     ]
     app = dash.Dash(
         __name__, external_stylesheets=external_stylesheets, assets_url_path="/assets/"
     )
-    app.title = "Avocado Analytics: Understand Your Avocados!"
+    app.title = "Capital's Climate Problem"
 
     app.layout = html.Div(
         children=[
@@ -36,15 +37,27 @@ def build_app_report(dash_components_list: list):
                 ],
                 className="header",
             ),
+            html.Div(children=dash_components_list, className="visuals"),
         ]
-        + dash_components_list
     )
 
     return app
 
 
-def build_table_component(array: list):
-    dash_table
+def build_table_component(headers: list, data: list, id: str):
+    # need to check dimensions
+    return dash_table.DataTable(
+        id=id,
+        columns=[
+            {"name": name, "id": "col-" + str(index)}
+            for index, name in enumerate(headers, start=0)
+        ],
+        data=[
+            {"col-" + str(index): value for index, value in enumerate(row, start=0)}
+            for row in data
+        ],
+        style_as_list_view=True,
+    )
 
 
 if __name__ == "__main__":
