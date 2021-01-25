@@ -4,11 +4,25 @@ import numpy
 
 
 def mean(dataframe: pandas.DataFrame):
+    """Make mean by column
+
+    Args:
+        dataframe (pandas.DataFrame): dataframe of columns (NaN values are not a problem)
+
+    Returns:
+        list: list of header and mean associated with
+    """
     headers = list(dataframe.columns.values)
-    months_mean = numpy.nanmean(dataframe.to_numpy(), axis=0)
+    means = numpy.nanmean(dataframe.to_numpy(), axis=0)
+    means_enriched = []
+
     print("Moyenne par mois:\n")
-    for i, months_mean in enumerate(months_mean, start=0):
-        print(headers[i] + " : " + str(months_mean))
+
+    for i, mean in enumerate(means, start=0):
+        print(headers[i] + " : " + str(mean))
+        means_enriched.append(list(headers[i], mean))
+
+    return means_enriched
 
 
 def run():
@@ -29,8 +43,9 @@ def run():
 
     print(reference_spreadsheets)
 
-    mean(
-        reference_spreadsheets.iloc[
+    # Make mean of month columns
+    month_mean = mean(
+        dataframe=reference_spreadsheets.iloc[
             :, list(map(int, str(config("MONTH_COLUMNS")).split(",")))
         ]
     )
