@@ -7,4 +7,7 @@
     "python.autoComplete.extraPaths": [
         "./src/capital_problem/"
     ],
+    "python.analysis.extraPaths": [
+        "./src/capital_problem/"
+    ]
 }
