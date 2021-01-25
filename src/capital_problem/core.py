@@ -1,6 +1,7 @@
 import pandas
 from decouple import config
 import numpy
+from dashboard import build_app_report
 
 
 def mean(dataframe: pandas.DataFrame):
@@ -20,7 +21,7 @@ def mean(dataframe: pandas.DataFrame):
 
     for i, mean in enumerate(means, start=0):
         print(headers[i] + " : " + str(mean))
-        means_enriched.append(list(headers[i], mean))
+        means_enriched.append([headers[i], mean])
 
     return means_enriched
 
@@ -49,6 +50,8 @@ def run():
             :, list(map(int, str(config("MONTH_COLUMNS")).split(",")))
         ]
     )
+
+    build_app_report([]).run_server(debug=True)
 
 
 if __name__ == "__main__":
