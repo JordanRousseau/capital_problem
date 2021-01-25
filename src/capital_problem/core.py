@@ -37,10 +37,15 @@ def get_reference_spreadsheets(print_: bool = False):
 
 
 def run(debug: bool = bool(int(config("DEBUG")))):
+    """core main run
+
+    Args:
+        debug (bool, optional): Parameter to run on debug. Defaults to `bool(int(config("DEBUG")))`.
+    """
     # Get reference spreadsheets
     reference_spreadsheets = get_reference_spreadsheets(print_=debug)
 
-    # Make mean of month columns
+    # Make summary of month columns
     month_summary = summary.column_summary(
         dataframe=reference_spreadsheets.iloc[
             :, list(map(int, str(config("MONTH_COLUMNS")).split(",")))
