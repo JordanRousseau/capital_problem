@@ -54,6 +54,15 @@ def run(debug: bool = bool(int(config("DEBUG")))):
         columns_meaning="Months",
     )
 
+    # Make a year summary
+    year_summary = summary.dataframe_summary(
+        dataframe=reference_spreadsheets.iloc[
+            :, list(map(int, str(config("MONTH_COLUMNS")).split(",")))
+        ],
+        print_=debug,
+        dataframe_meaning="Year",
+    )
+
     dashboard.build_app_report(
         [
             dashboard.build_table_component(

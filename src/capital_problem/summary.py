@@ -77,4 +77,24 @@ if __name__ == "__main__":
 def dataframe_summary(
     dataframe: pandas.DataFrame, dataframe_meaning: str, print_: bool = False
 ):
-    return None
+
+    # Convert the dataframe to beatiful numpy array
+    numpy_array = dataframe.to_numpy().astype(float)
+
+    # Extract minimum
+    min = numpy.nanmin(numpy_array)
+
+    # Extract maximum
+    max = numpy.nanmax(numpy_array)
+
+    if print_:
+        print(
+            "dataframe_meaning :",
+            dataframe_meaning,
+            ", Minimum :",
+            min,
+            ", Maximum :",
+            max,
+        )
+
+    return {"dataframe_meaning": dataframe_meaning, "Minimum": min, "Maximum": max}
