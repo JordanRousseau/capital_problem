@@ -77,6 +77,16 @@ if __name__ == "__main__":
 def dataframe_summary(
     dataframe: pandas.DataFrame, dataframe_meaning: str, print_: bool = False
 ):
+    """Get Minimum and Maximum for a dataframe
+
+    Args:
+        dataframe (pandas.DataFrame): dataframe (NaN values are not a problem)
+        dataframe_meaning (str): Meaning for all the data.
+        print_ (bool, optional): Print summary infos on console. Defaults to False.
+
+    Returns:
+        dict: Summary of a dataframe, will return `{"dataframe_meaning": str, "Minimum": float, "Maximum": float}`
+    """
 
     # Convert the dataframe to beatiful numpy array
     numpy_array = dataframe.to_numpy().astype(float)
