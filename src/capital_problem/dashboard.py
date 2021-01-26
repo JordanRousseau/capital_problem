@@ -1,8 +1,8 @@
 import dash
-import dash_core_components as dcc
-import dash_html_components as html
+import dash_core_components
+import dash_html_components
 import dash_table
-import numpy
+import dash_bootstrap_components
 
 
 def build_app_report(dash_components_list: list):
@@ -18,26 +18,28 @@ def build_app_report(dash_components_list: list):
     )
     app.title = "Capital's Climate Problem"
 
-    app.layout = html.Div(
+    app.layout = dash_html_components.Div(
         children=[
-            html.Div(
+            dash_html_components.Div(
                 children=[
-                    html.P(children="🌤", className="header-emoji"),
-                    html.H1(
+                    dash_html_components.P(children="🌤", className="header-emoji"),
+                    dash_html_components.H1(
                         children="Capital's Climate Problem", className="header-title"
                     ),
-                    html.P(
+                    dash_html_components.P(
                         children="Resolve a capital's climate problem by Simon Huet & Théo Levalet.",
                         className="header-description",
                     ),
-                    html.P(
+                    dash_html_components.P(
                         children="Compare two climate datasets to find the european capital for which temperatures are provided in the file Climate.xlsx. We will use the file Savukoskikirkonkyla.xlsx from open data as a reference.",
                         className="header-description",
                     ),
                 ],
                 className="header",
             ),
-            html.Div(children=dash_components_list, className="visuals"),
+            dash_html_components.Div(
+                children=dash_components_list, className="visuals"
+            ),
         ]
     )
 
@@ -57,6 +59,24 @@ def build_table_component(headers: list, data: list, id: str):
             for row in data
         ],
         style_as_list_view=True,
+    )
+
+
+def build_card_group(data_dict: dict, id: str):
+    return dash_html_components.Div(
+        children=[
+            dash_bootstrap_components.Card(
+                children=dash_bootstrap_components.CardBody(
+                    [
+                        dash_html_components.H4(str(element), className="card-title"),
+                        dash_html_components.H6(str(key), className="card-subtitle"),
+                    ]
+                ),
+                className="card-" + str(key),
+            )
+            for key, element in data_dict.items()
+        ],
+        className="summary-cards",
     )
 
 

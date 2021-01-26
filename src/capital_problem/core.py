@@ -63,8 +63,12 @@ def run(debug: bool = bool(int(config("DEBUG")))):
         dataframe_meaning="Year",
     )
 
+    year_summary_without_meaning = year_summary
+    year_summary_without_meaning.pop("dataframe_meaning", None)
+
     dashboard.build_app_report(
         [
+            dashboard.build_card_group(year_summary_without_meaning, "year-cards"),
             dashboard.build_table_component(
                 headers=month_summary.get("summary_headers", []),
                 data=month_summary.get("summary_data", []),
