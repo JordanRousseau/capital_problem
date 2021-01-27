@@ -6,7 +6,16 @@ import dashboard
 import summary
 
 
-def get_stacked_temperatures(dataframe: pandas.DataFrame):
+def get_stacked_temperatures(dataframe: pandas.DataFrame, print_=False):
+    """Stack temperatures stored in multiple columns with days represented by rows
+
+    Args:
+        dataframe (pandas.DataFrame): Dataframe with columns as month and rows as days
+        print_ (bool, optional): Print param to print the dataframe. Defaults to False.
+
+    Returns:
+        pandas.DataFrame: dataframe with temperatures stacked, a column for days and a column for months
+    """
 
     # Stack temperature
     only_temperature = pandas.melt(
@@ -18,18 +27,20 @@ def get_stacked_temperatures(dataframe: pandas.DataFrame):
         ],
     )
 
-    print("stack", only_temperature)
-    return None
+    if print_:
+        print("stack\n", only_temperature)
+
+    return only_temperature
 
 
 def get_reference_spreadsheets(print_: bool = False) -> pandas.DataFrame:
     """Get the reference spreadsheets
 
     Args:
-        print_ (bool, optional): print param to print the dataframe. Defaults to True.
+        print_ (bool, optional): Print param to print the dataframe. Defaults to False.
 
     Returns:
-        pandas.DataFrame: reference spreadsheets
+        pandas.DataFrame: Reference spreadsheets
     """
     # Import XLSX
     reference_spreadsheets: pandas.DataFrame = pandas.read_excel(
@@ -97,7 +108,7 @@ def run(debug: bool = bool(int(config("DEBUG")))):
     year_summary_without_meaning.pop("dataframe_meaning", None)
 
     # Stack all the temperatures with corresponding date
-    get_stacked_temperatures(reference_spreadsheets)
+    get_stacked_temperatures(reference_spreadsheets, print_=debug)
 
     dashboard.build_app_report(
         [
