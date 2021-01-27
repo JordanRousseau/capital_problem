@@ -3,6 +3,7 @@ import dash_core_components
 import dash_html_components
 import dash_table
 import dash_bootstrap_components
+import pandas
 
 
 def build_app_report(dash_components_list: list):
@@ -80,15 +81,22 @@ def build_card_group(data_dict: dict, id: str):
     )
 
 
-def build_time_series_chart(dates, data_list, graph_title):
+def build_time_series_chart(dates: pandas.Series, data_list: list, layout: dict):
     return dash_core_components.Graph(
         animate= True,
         figure={
             "data": [
-                {"x": dates, "y": data, "type": "line", "name": data.name, **({'visible': 'legendonly'} if key else {})}
+                {
+                    "x": dates, 
+                    "y": data, 
+                    "mode": "lines+markers", 
+                    "line_shape": "spline", 
+                    "name": data.name, 
+                    **({'visible': 'legendonly'} if key else {})
+                }
                 for key, data in enumerate(data_list ,start=0)
             ],
-            "layout": {"title": graph_title},
+            "layout": layout
         },
     )
 

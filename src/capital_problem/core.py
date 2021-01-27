@@ -166,11 +166,13 @@ def run(debug: bool = bool(int(config("DEBUG")))):
     )
     # Create year column
     stacked_temperatures["Year"] = 2018
-    dates = create_date_column(
+    stacked_temperatures['full_date'] = create_date_column(
         stacked_temperatures["Year"],
         stacked_temperatures["Month"],
         stacked_temperatures["Day"],
     )
+
+    stacked_temperatures = stacked_temperatures[pandas.notna(stacked_temperatures['full_date'])]
 
     dashboard.build_app_report(
         [
@@ -188,12 +190,38 @@ def run(debug: bool = bool(int(config("DEBUG")))):
                         :, list(map(int, str(config("MONTH_COLUMNS")).split(",")))
                     ]
                 ],
-                graph_title="Monthly temperatures",
+                layout={
+                    'title': 'Monthly temperatures',
+                    'xaxis':{
+                        'title':'Day'
+                    },
+                    'yaxis':{
+                     'title':'Temperature in °C'
+                    }
+                },
             ),
             dashboard.build_time_series_chart(
-                dates=dates,
+                dates=stacked_temperatures['full_date'],
                 data_list=[stacked_temperatures["Temperature"]],
-                graph_title="Annual temperatures",
+                layout={
+                    'title': "Annual temperatures",
+                    'xaxis':{'title':'Date'},
+                    'yaxis':{'title':'Temperature in °C'},
+                    'dragmode': 'pan'
+                },
+            ),
+            dashboard.build_time_series_chart(
+                dates=stacked_temperatures['full_date'],
+                data_list=[stacked_temperatures["Temperature"]],
+                layout={
+                    'title': "Annual temperatures",
+                    'xaxis':{'title':'Date', 
+                        'range':[stacked_temperatures['full_date'][0], stacked_temperatures['full_date'][29]]
+                    },
+                    'yaxis':{
+                        'title':'Temperature in °C'
+                    },
+                },
             ),
         ]
     ).run_server(debug=debug)
