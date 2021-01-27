@@ -1,4 +1,13 @@
 {
     "editor.formatOnSave": true,
-    "python.linting.pylintEnabled": true
+    "python.linting.pylintEnabled": true,
+    "python.formatting.provider": "black",
+    "python.linting.enabled": true,
+    "python.languageServer": "Pylance",
+    "python.autoComplete.extraPaths": [
+        "./src/capital_problem/"
+    ],
+    "python.analysis.extraPaths": [
+        "./src/capital_problem/"
+    ]
 }
