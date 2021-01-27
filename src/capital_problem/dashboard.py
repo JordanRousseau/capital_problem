@@ -82,10 +82,11 @@ def build_card_group(data_dict: dict, id: str):
 
 def build_time_series_chart(dates, data_list, graph_title):
     return dash_core_components.Graph(
+        animate= True,
         figure={
             "data": [
-                {"x": dates, "y": data, "type": "line", "name": "SF"}
-                for data in data_list
+                {"x": dates, "y": data, "type": "line", "name": data.name, **({'visible': 'legendonly'} if key else {})}
+                for key, data in enumerate(data_list ,start=0)
             ],
             "layout": {"title": graph_title},
         },
