@@ -1,12 +1,13 @@
+from numpy.core.arrayprint import str_format
 from numpy.lib import index_tricks
 import pandas
 from decouple import config
 import numpy
 import dashboard
 import summary
+import datetime
 
-
-def get_stacked_temperatures(dataframe: pandas.DataFrame, print_=False):
+def get_stacked_temperatures(dataframe: pandas.DataFrame, print_: bool = False):
     """Stack temperatures stored in multiple columns with days represented by rows
 
     Args:
@@ -25,6 +26,8 @@ def get_stacked_temperatures(dataframe: pandas.DataFrame, print_=False):
             dataframe.columns[index]
             for index in list(map(int, str(config("MONTH_COLUMNS")).split(",")))
         ],
+        var_name='Month',
+        value_name='Temperature'
     )
 
     if print_:
@@ -71,11 +74,47 @@ def get_reference_spreadsheets(print_: bool = False) -> pandas.DataFrame:
         r"^J([0-9]+)$", pad_number
     )
 
+    #Replace month name by month locale's full name
+    reference_spreadsheets.columns = header_month_convertor(reference_spreadsheets.columns.values)
+    reference_spreadsheets.columns = header_column_rename(reference_spreadsheets.columns.values, 'Day',int(config("DAY_COL_INDEX")))
+
     if print_:
         print(reference_spreadsheets)
 
     return reference_spreadsheets
 
+def header_month_convertor(header_list: list):
+    """Convert header month to locale's full name
+
+    Args:
+        header_list (list, required): header list param to convert the month.
+
+    Returns:
+        pandas.DataFrame: header list
+    """
+    for key, month_index in enumerate(list(map(int, str(config("MONTH_COLUMNS")).split(","))), start=1):
+        header_list[month_index] = datetime.date(1900,key,1).strftime('%B')
+
+    return header_list
+
+def header_column_rename(header_list: list, column_name: str, column_index: int):
+    """Rename column with a name
+
+    Args:
+        header_list (list, required): header list param to convert the month.
+        column_name (str, required): New name for the column
+        column_index (int, required): index of the column
+
+    Returns:
+        pandas.DataFrame: header list
+    """
+    header_list[column_index] = column_name
+
+    return header_list
+
+
+def create_date_column(year: pandas.Series, month: pandas.Series, day: pandas.Series):
+    return pandas.to_datetime(year.astype(str) + '-' + month.astype(str) +'-'+ day.astype(str), format = '%Y-%B-%d', errors='coerce')
 
 def run(debug: bool = bool(int(config("DEBUG")))):
     """core main run
@@ -108,7 +147,10 @@ def run(debug: bool = bool(int(config("DEBUG")))):
     year_summary_without_meaning.pop("dataframe_meaning", None)
 
     # Stack all the temperatures with corresponding date
-    get_stacked_temperatures(reference_spreadsheets, print_=debug)
+    stacked_temperatures = get_stacked_temperatures(reference_spreadsheets, print_=debug)
+    # Create year column
+    stacked_temperatures['Year'] = 2018
+    dates = create_date_column(stacked_temperatures['Year'], stacked_temperatures['Month'], stacked_temperatures['Day'])
 
     dashboard.build_app_report(
         [
@@ -118,6 +160,10 @@ def run(debug: bool = bool(int(config("DEBUG")))):
                 data=month_summary.get("summary_data", []),
                 id="summary-table",
             ),
+            dashboard.build_time_series_chart(
+                dates=dates,
+                temperatures=stacked_temperatures['Temperature']
+            )
         ]
     ).run_server(debug=debug)
 

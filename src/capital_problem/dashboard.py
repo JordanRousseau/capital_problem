@@ -79,6 +79,18 @@ def build_card_group(data_dict: dict, id: str):
         className="summary-cards",
     )
 
+def build_time_series_chart(dates, temperatures):
+    return dash_core_components.Graph(
+        figure={
+            'data': [
+                {'x': dates, 'y': temperatures, 'type': 'line', 'name': 'SF'},
+            ],
+            'layout': {
+                'title': 'Dash Data Visualization'
+            }
+        },
+    )
+
 
 if __name__ == "__main__":
     build_app_report(dash_components_list=[]).run_server(debug=True)
