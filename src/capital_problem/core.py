@@ -1,3 +1,4 @@
+from numpy.lib import index_tricks
 import pandas
 from decouple import config
 import numpy
@@ -5,7 +6,23 @@ import dashboard
 import summary
 
 
-def get_reference_spreadsheets(print_: bool = False):
+def get_stacked_temperatures(dataframe: pandas.DataFrame):
+
+    # Stack temperature
+    only_temperature = pandas.melt(
+        dataframe,
+        id_vars=[dataframe.columns[0]],
+        value_vars=[
+            dataframe.columns[index]
+            for index in list(map(int, str(config("MONTH_COLUMNS")).split(",")))
+        ],
+    )
+
+    print("stack", only_temperature)
+    return None
+
+
+def get_reference_spreadsheets(print_: bool = False) -> pandas.DataFrame:
     """Get the reference spreadsheets
 
     Args:
@@ -15,7 +32,7 @@ def get_reference_spreadsheets(print_: bool = False):
         pandas.DataFrame: reference spreadsheets
     """
     # Import XLSX
-    reference_spreadsheets = pandas.read_excel(
+    reference_spreadsheets: pandas.DataFrame = pandas.read_excel(
         io=config("CLIMATE_PATH"),
         sheet_name=config("CLIMATE_SHEET_SI"),
         skiprows=int(config("CLIMATE_HEADER")) - 1,
@@ -29,6 +46,19 @@ def get_reference_spreadsheets(print_: bool = False):
         )
         == True
     ]
+
+    # Put a trailling zero
+    def pad_number(match):
+        number = int(match.group(1))
+        return format(number, "02d")
+
+    reference_spreadsheets[
+        reference_spreadsheets.columns[int(config("DAY_COL_INDEX"))]
+    ] = reference_spreadsheets[
+        reference_spreadsheets.columns[int(config("DAY_COL_INDEX"))]
+    ].str.replace(
+        r"^J([0-9]+)$", pad_number
+    )
 
     if print_:
         print(reference_spreadsheets)
@@ -65,6 +95,9 @@ def run(debug: bool = bool(int(config("DEBUG")))):
 
     year_summary_without_meaning = year_summary
     year_summary_without_meaning.pop("dataframe_meaning", None)
+
+    # Stack all the temperatures with corresponding date
+    get_stacked_temperatures(reference_spreadsheets)
 
     dashboard.build_app_report(
         [
