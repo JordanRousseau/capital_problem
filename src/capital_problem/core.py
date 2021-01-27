@@ -161,8 +161,14 @@ def run(debug: bool = bool(int(config("DEBUG")))):
                 id="summary-table",
             ),
             dashboard.build_time_series_chart(
+                dates=None,
+                data_list= [],
+                graph_title= 'Monthly temperatures',
+            ),
+            dashboard.build_time_series_chart(
                 dates=dates,
-                temperatures=stacked_temperatures['Temperature']
+                data_list=[stacked_temperatures['Temperature']],
+                graph_title='Annual temperatures'
             )
         ]
     ).run_server(debug=debug)

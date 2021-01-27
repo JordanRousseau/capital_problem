@@ -79,14 +79,15 @@ def build_card_group(data_dict: dict, id: str):
         className="summary-cards",
     )
 
-def build_time_series_chart(dates, temperatures):
+def build_time_series_chart(dates, data_list, graph_title):
     return dash_core_components.Graph(
         figure={
             'data': [
-                {'x': dates, 'y': temperatures, 'type': 'line', 'name': 'SF'},
+                {'x': dates, 'y': data, 'type': 'line', 'name': 'SF'}
+                for data in data_list
             ],
             'layout': {
-                'title': 'Dash Data Visualization'
+                'title': graph_title
             }
         },
     )
