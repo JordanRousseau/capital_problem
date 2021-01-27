@@ -7,6 +7,7 @@ import dashboard
 import summary
 import datetime
 
+
 def get_stacked_temperatures(dataframe: pandas.DataFrame, print_: bool = False):
     """Stack temperatures stored in multiple columns with days represented by rows
 
@@ -26,8 +27,8 @@ def get_stacked_temperatures(dataframe: pandas.DataFrame, print_: bool = False):
             dataframe.columns[index]
             for index in list(map(int, str(config("MONTH_COLUMNS")).split(",")))
         ],
-        var_name='Month',
-        value_name='Temperature'
+        var_name="Month",
+        value_name="Temperature",
     )
 
     if print_:
@@ -74,14 +75,19 @@ def get_reference_spreadsheets(print_: bool = False) -> pandas.DataFrame:
         r"^J([0-9]+)$", pad_number
     )
 
-    #Replace month name by month locale's full name
-    reference_spreadsheets.columns = header_month_convertor(reference_spreadsheets.columns.values)
-    reference_spreadsheets.columns = header_column_rename(reference_spreadsheets.columns.values, 'Day',int(config("DAY_COL_INDEX")))
+    # Replace month name by month locale's full name
+    reference_spreadsheets.columns = header_month_convertor(
+        reference_spreadsheets.columns.values
+    )
+    reference_spreadsheets.columns = header_column_rename(
+        reference_spreadsheets.columns.values, "Day", int(config("DAY_COL_INDEX"))
+    )
 
     if print_:
         print(reference_spreadsheets)
 
     return reference_spreadsheets
+
 
 def header_month_convertor(header_list: list):
     """Convert header month to locale's full name
@@ -92,10 +98,13 @@ def header_month_convertor(header_list: list):
     Returns:
         pandas.DataFrame: header list
     """
-    for key, month_index in enumerate(list(map(int, str(config("MONTH_COLUMNS")).split(","))), start=1):
-        header_list[month_index] = datetime.date(1900,key,1).strftime('%B')
+    for key, month_index in enumerate(
+        list(map(int, str(config("MONTH_COLUMNS")).split(","))), start=1
+    ):
+        header_list[month_index] = datetime.date(1900, key, 1).strftime("%B")
 
     return header_list
+
 
 def header_column_rename(header_list: list, column_name: str, column_index: int):
     """Rename column with a name
@@ -114,7 +123,12 @@ def header_column_rename(header_list: list, column_name: str, column_index: int)
 
 
 def create_date_column(year: pandas.Series, month: pandas.Series, day: pandas.Series):
-    return pandas.to_datetime(year.astype(str) + '-' + month.astype(str) +'-'+ day.astype(str), format = '%Y-%B-%d', errors='coerce')
+    return pandas.to_datetime(
+        year.astype(str) + "-" + month.astype(str) + "-" + day.astype(str),
+        format="%Y-%B-%d",
+        errors="coerce",
+    )
+
 
 def run(debug: bool = bool(int(config("DEBUG")))):
     """core main run
@@ -147,10 +161,16 @@ def run(debug: bool = bool(int(config("DEBUG")))):
     year_summary_without_meaning.pop("dataframe_meaning", None)
 
     # Stack all the temperatures with corresponding date
-    stacked_temperatures = get_stacked_temperatures(reference_spreadsheets, print_=debug)
+    stacked_temperatures = get_stacked_temperatures(
+        reference_spreadsheets, print_=debug
+    )
     # Create year column
-    stacked_temperatures['Year'] = 2018
-    dates = create_date_column(stacked_temperatures['Year'], stacked_temperatures['Month'], stacked_temperatures['Day'])
+    stacked_temperatures["Year"] = 2018
+    dates = create_date_column(
+        stacked_temperatures["Year"],
+        stacked_temperatures["Month"],
+        stacked_temperatures["Day"],
+    )
 
     dashboard.build_app_report(
         [
@@ -161,15 +181,20 @@ def run(debug: bool = bool(int(config("DEBUG")))):
                 id="summary-table",
             ),
             dashboard.build_time_series_chart(
-                dates=None,
-                data_list= [],
-                graph_title= 'Monthly temperatures',
+                dates=reference_spreadsheets["Day"],
+                data_list=[
+                    reference_spreadsheets[column]
+                    for column in reference_spreadsheets.iloc[
+                        :, list(map(int, str(config("MONTH_COLUMNS")).split(",")))
+                    ]
+                ],
+                graph_title="Monthly temperatures",
             ),
             dashboard.build_time_series_chart(
                 dates=dates,
-                data_list=[stacked_temperatures['Temperature']],
-                graph_title='Annual temperatures'
-            )
+                data_list=[stacked_temperatures["Temperature"]],
+                graph_title="Annual temperatures",
+            ),
         ]
     ).run_server(debug=debug)
 
