@@ -4,6 +4,8 @@ import dash_html_components
 import dash_table
 import dash_bootstrap_components
 import pandas
+from plotly import data
+import plotly.graph_objects
 
 
 def build_app_report(dash_components_list: list):
@@ -82,22 +84,22 @@ def build_card_group(data_dict: dict, id: str):
 
 
 def build_time_series_chart(dates: pandas.Series, data_list: list, layout: dict):
+    graph_figure = plotly.graph_objects.Figure(layout=layout)
+
+    for key, data in enumerate(data_list, start=0):
+        graph_figure.add_trace(
+            plotly.graph_objects.Scatter(
+                x=dates,
+                y=data,
+                mode="lines+markers",
+                line_shape="spline",
+                name=data.name,
+                visible="legendonly" if key else None,
+            )
+        )
     return dash_core_components.Graph(
-        animate= True,
-        figure={
-            "data": [
-                {
-                    "x": dates, 
-                    "y": data, 
-                    "mode": "lines+markers", 
-                    "line_shape": "spline", 
-                    "name": data.name, 
-                    **({'visible': 'legendonly'} if key else {})
-                }
-                for key, data in enumerate(data_list ,start=0)
-            ],
-            "layout": layout
-        },
+        animate=True,
+        figure=graph_figure,
     )
 
 
