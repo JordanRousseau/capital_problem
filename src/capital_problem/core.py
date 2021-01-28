@@ -6,6 +6,7 @@ import numpy
 import dashboard
 import summary
 import datetime
+import callbacks
 
 
 def get_stacked_temperatures(dataframe: pandas.DataFrame, print_: bool = False):
@@ -79,6 +80,8 @@ def get_reference_spreadsheets(print_: bool = False) -> pandas.DataFrame:
     reference_spreadsheets.columns = header_month_convertor(
         reference_spreadsheets.columns.values
     )
+
+    # Rename day column
     reference_spreadsheets.columns = header_column_rename(
         reference_spreadsheets.columns.values, "Day", int(config("DAY_COL_INDEX"))
     )
@@ -166,65 +169,82 @@ def run(debug: bool = bool(int(config("DEBUG")))):
     )
     # Create year column
     stacked_temperatures["Year"] = 2018
-    stacked_temperatures['full_date'] = create_date_column(
+    stacked_temperatures["full_date"] = create_date_column(
         stacked_temperatures["Year"],
         stacked_temperatures["Month"],
         stacked_temperatures["Day"],
     )
 
-    stacked_temperatures = stacked_temperatures[pandas.notna(stacked_temperatures['full_date'])]
+    stacked_temperatures = stacked_temperatures[
+        pandas.notna(stacked_temperatures["full_date"])
+    ]
 
-    dashboard.build_app_report(
-        [
-            dashboard.build_card_group(year_summary_without_meaning, "year-cards"),
-            dashboard.build_table_component(
-                headers=month_summary.get("summary_headers", []),
-                data=month_summary.get("summary_data", []),
-                id="summary-table",
-            ),
-            dashboard.build_time_series_chart(
-                dates=reference_spreadsheets["Day"],
-                data_list=[
-                    reference_spreadsheets[column]
-                    for column in reference_spreadsheets.iloc[
-                        :, list(map(int, str(config("MONTH_COLUMNS")).split(",")))
-                    ]
+    visual_year_summary = dashboard.build_card_group(
+        year_summary_without_meaning, "year-cards"
+    )
+    visual_months_summary = dashboard.build_table_component(
+        headers=month_summary.get("summary_headers", []),
+        data=month_summary.get("summary_data", []),
+        id="summary-table",
+    )
+    visual_monthly_graph = dashboard.build_time_series_chart(
+        id="monthly-graph",
+        dates=reference_spreadsheets["Day"],
+        data_list=[
+            reference_spreadsheets[column]
+            for column in reference_spreadsheets.iloc[
+                :, list(map(int, str(config("MONTH_COLUMNS")).split(",")))
+            ]
+        ],
+        layout={
+            "title": "Monthly temperatures",
+            "xaxis": {"title": "Day"},
+            "yaxis": {"title": "Temperature in °C"},
+        },
+    )
+    visual_annual_graph = dashboard.build_time_series_chart(
+        id="annual-graph",
+        dates=stacked_temperatures["full_date"],
+        data_list=[stacked_temperatures["Temperature"]],
+        layout={
+            "title": "Annual temperatures",
+            "xaxis": {"title": "Date"},
+            "yaxis": {"title": "Temperature in °C"},
+            "dragmode": "pan",
+        },
+    )
+    visual_annual_graph_zoom = dashboard.build_time_series_chart(
+        id="annual-graph-zoom",
+        dates=stacked_temperatures["full_date"],
+        data_list=[stacked_temperatures["Temperature"]],
+        layout={
+            "title": "Annual temperatures",
+            "xaxis": {
+                "title": "Date",
+                "range": [
+                    stacked_temperatures["full_date"][0],
+                    stacked_temperatures["full_date"][29],
                 ],
-                layout={
-                    'title': 'Monthly temperatures',
-                    'xaxis':{
-                        'title':'Day'
-                    },
-                    'yaxis':{
-                     'title':'Temperature in °C'
-                    }
-                },
-            ),
-            dashboard.build_time_series_chart(
-                dates=stacked_temperatures['full_date'],
-                data_list=[stacked_temperatures["Temperature"]],
-                layout={
-                    'title': "Annual temperatures",
-                    'xaxis':{'title':'Date'},
-                    'yaxis':{'title':'Temperature in °C'},
-                    'dragmode': 'pan'
-                },
-            ),
-            dashboard.build_time_series_chart(
-                dates=stacked_temperatures['full_date'],
-                data_list=[stacked_temperatures["Temperature"]],
-                layout={
-                    'title': "Annual temperatures",
-                    'xaxis':{'title':'Date', 
-                        'range':[stacked_temperatures['full_date'][0], stacked_temperatures['full_date'][29]]
-                    },
-                    'yaxis':{
-                        'title':'Temperature in °C'
-                    },
-                },
-            ),
+            },
+            "yaxis": {"title": "Temperature in °C"},
+        },
+    )
+
+    report = dashboard.build_app_report(
+        [
+            visual_year_summary,
+            visual_months_summary,
+            visual_monthly_graph,
+            visual_annual_graph,
+            visual_annual_graph_zoom,
         ]
-    ).run_server(debug=debug)
+    )
+
+    callbacks.zoom_in_dates_graph(
+        graph=visual_annual_graph_zoom, app=report, event="clickData", granularity=15
+    )
+
+    report.run_server(debug=debug)
 
 
 if __name__ == "__main__":

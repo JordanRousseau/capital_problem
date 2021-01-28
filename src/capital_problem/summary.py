@@ -17,7 +17,7 @@ def column_summary(
         dict: contains headers and data `{"summary_headers": list(str), "summary_data": list(list(str, float, float, float, float))}`
     """
 
-    # Convert the dataframe to beatiful numpy array
+    # Convert the dataframe to beautiful numpy array
     numpy_array = dataframe.to_numpy().astype(float)
 
     # Extract headers
