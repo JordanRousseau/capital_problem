@@ -129,3 +129,7 @@ tr:has(td.cell--selected) > td {
   margin: 5px;
   padding: 9px;
 }
+
+.modebar {
+  display: none;
+}
