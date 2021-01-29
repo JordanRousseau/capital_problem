@@ -37,7 +37,12 @@ def zoom_in_dates_graph(
 
         if previous and previous == clickData or (previous and not clickData):
             # Click on the same point or unselect : unzoom and reset previous state
-            graph.figure.update_layout({"xaxis": {"range": [x_axis[0], x_axis[-1]]}})
+            graph.figure.update_layout(
+                {
+                    "margin": {"pad": 10},
+                    "xaxis": {"range": [x_axis[0], x_axis[-1]]},
+                }
+            )
             previous = None
         else:
             # Click on a point : update the range
@@ -59,7 +64,10 @@ def zoom_in_dates_graph(
                 range_max = range_max if range_max < len(x_axis) else len(x_axis) - 1
 
                 graph.figure.update_layout(
-                    {"xaxis": {"range": [x_axis[range_min], x_axis[range_max]]}}
+                    {
+                        "margin": {"pad": 10},
+                        "xaxis": {"range": [x_axis[range_min], x_axis[range_max]]},
+                    }
                 )
             previous = clickData
 
