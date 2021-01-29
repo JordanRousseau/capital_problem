@@ -221,10 +221,6 @@ def run(debug: bool = bool(int(config("DEBUG")))):
             "title": "Annual temperatures",
             "xaxis": {
                 "title": "Date",
-                "range": [
-                    stacked_temperatures["full_date"][0],
-                    stacked_temperatures["full_date"][29],
-                ],
             },
             "yaxis": {"title": "Temperature in °C"},
         },
@@ -236,12 +232,11 @@ def run(debug: bool = bool(int(config("DEBUG")))):
             visual_months_summary,
             visual_monthly_graph,
             visual_annual_graph,
-            visual_annual_graph_zoom,
         ]
     )
 
     callbacks.zoom_in_dates_graph(
-        graph=visual_annual_graph_zoom, app=report, event="clickData", granularity=15
+        graph=visual_annual_graph, app=report, event="selectedData", granularity=15
     )
 
     report.run_server(debug=debug)
