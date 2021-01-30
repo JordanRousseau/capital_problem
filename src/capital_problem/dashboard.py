@@ -3,6 +3,10 @@ import dash_core_components
 import dash_html_components
 import dash_table
 import dash_bootstrap_components
+import pandas
+import plotly.graph_objects
+import json
+from dash.dependencies import Input, Output
 
 
 def build_app_report(dash_components_list: list):
@@ -38,7 +42,8 @@ def build_app_report(dash_components_list: list):
                 className="header",
             ),
             dash_html_components.Div(
-                children=dash_components_list, className="visuals"
+                children=dash_components_list,
+                className="visuals",
             ),
         ]
     )
@@ -78,6 +83,28 @@ def build_card_group(data_dict: dict, id: str):
         ],
         className="summary-cards",
     )
+
+
+def build_time_series_chart(
+    dates: pandas.Series, data_list: list, layout: dict, id: str
+):
+    graph_figure = plotly.graph_objects.Figure(layout=layout)
+
+    for key, data in enumerate(data_list, start=0):
+        graph_figure.add_trace(
+            trace=plotly.graph_objects.Scatter(
+                x=dates,
+                y=data,
+                mode="lines+markers",
+                line_shape="spline",
+                name=data.name,
+                visible="legendonly" if key else None,
+            )
+        )
+
+    graph_figure.update_layout(clickmode="event+select")
+
+    return dash_core_components.Graph(animate=True, figure=graph_figure, id=id)
 
 
 if __name__ == "__main__":
