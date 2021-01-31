@@ -1,11 +1,10 @@
-from os import error
-from numpy.core.shape_base import stack
 import pandas
 from decouple import config
 import dashboard
 import summary
 import datetime
-from numpy import nanmean
+import numpy
+from scipy import stats
 
 def get_stacked_temperatures(dataframe: pandas.DataFrame, print_: bool = False):
     """Stack temperatures stored in multiple columns with days represented by rows
@@ -46,8 +45,6 @@ def get_reference_spreadsheets(sheet_name: str ,print_: bool = False) -> pandas.
     Returns:
         pandas.DataFrame: Reference spreadsheets
     """
-
-    #TODO Supprimer ce scotch quand la data sera fix
     
     # Import XLSX
     reference_spreadsheets: pandas.DataFrame = pandas.read_excel(
@@ -90,18 +87,6 @@ def get_reference_spreadsheets(sheet_name: str ,print_: bool = False) -> pandas.
 
     if print_:
         print(reference_spreadsheets)
-
-    # for month in reference_spreadsheets.loc[:, reference_spreadsheets.columns != 'Day']:
-    #      #print(reference_spreadsheets[month].shift())
-    #      prev_col_name = month+ "-prev-value"
-    #      next_col_name = month+ "-next-value"
-
-    #      reference_spreadsheets[prev_col_name] = reference_spreadsheets[month].shift(),
-    #      reference_spreadsheets[next_col_name] = reference_spreadsheets[month].shift(-1),
-
-    #      reference_spreadsheets[month] = reference_spreadsheets[month].apply(lambda x: nanmean([reference_spreadsheets[prev_col_name], reference_spreadsheets[next_col_name]) if not float(x) else x)
-        
-    # # print(reference_spreadsheets)
 
     return reference_spreadsheets
 
@@ -146,17 +131,18 @@ def create_date_column(year: pandas.Series, month: pandas.Series, day: pandas.Se
     )
 
 
-def get_statistics(sheet_name:str , debug: bool = False):
+def get_statistics(sheet_name:str , print_: bool = False):
     # Get reference spreadsheets
-    reference_spreadsheets = get_reference_spreadsheets(print_=debug, sheet_name=sheet_name)
+    reference_spreadsheets = get_reference_spreadsheets(print_=print_, sheet_name=sheet_name)
 
     display_sheet_name = sheet_name.replace(" ", "").lower()
 
-    print(display_sheet_name)
+    if print_: 
+        print(display_sheet_name)
 
     # Stack all the temperatures with corresponding date
     stacked_temperatures = get_stacked_temperatures(
-        reference_spreadsheets, print_=debug
+        reference_spreadsheets, print_=print_
     )
     # Create year column
     stacked_temperatures["Year"] = 2018
@@ -174,6 +160,23 @@ def get_statistics(sheet_name:str , debug: bool = False):
         stacked_temperatures["Temperature"], errors='coerce', downcast='float'
     ).interpolate()
 
+    # Detects outliers 
+    sk_temp = stacked_temperatures
+
+    sk_temp['mean'] = stacked_temperatures['Temperature'].rolling(window=5, center= True).mean().fillna(method='bfill').fillna(method='ffill')
+
+    threshold = 10
+    difference = numpy.abs(sk_temp['Temperature'] - sk_temp['mean'] )
+    outliers = difference > threshold
+
+    if print_:
+        print("outliers: " , sk_temp[outliers])
+
+    if not outliers.empty :
+         stacked_temperatures.loc[outliers,'Temperature'] = numpy.nan
+         stacked_temperatures['Temperature'] = stacked_temperatures['Temperature'].interpolate()
+
+    # Unstack data
     months = stacked_temperatures['Month'].unique()
 
     spreadsheet_for_summary = stacked_temperatures[['Day', 'Month', 'Temperature']].pivot(index=['Day'], columns='Month')
@@ -181,17 +184,15 @@ def get_statistics(sheet_name:str , debug: bool = False):
     spreadsheet_for_summary.columns =  spreadsheet_for_summary.columns.droplevel().rename(None)
 
     spreadsheet_for_summary = spreadsheet_for_summary.reindex(months, axis=1)
-    
-    spreadsheet_for_summary.reset_index(level=0, inplace=True)
-    
 
-    print(spreadsheet_for_summary)
+    spreadsheet_for_summary.reset_index(level=0, inplace=True)
+
     # Make summary of month columns
     month_summary = summary.column_summary(
         dataframe= spreadsheet_for_summary.iloc[
             :, list(map(int, str(config("MONTH_COLUMNS")).split(",")))
         ],
-        print_=debug,
+        print_=print_,
         columns_meaning="Months",
     )
 
@@ -200,24 +201,7 @@ def get_statistics(sheet_name:str , debug: bool = False):
         dataframe=spreadsheet_for_summary.iloc[
             :, list(map(int, str(config("MONTH_COLUMNS")).split(",")))
         ],
-        print_=debug,
-        dataframe_meaning="Year",
-    )
-
-    month_summary = summary.column_summary(
-        dataframe=spreadsheet_for_summary.iloc[
-            :, list(map(int, str(config("MONTH_COLUMNS")).split(",")))
-        ],
-        print_=debug,
-        columns_meaning="Months",
-    )
-
-    # Make a year summary
-    year_summary = summary.dataframe_summary(
-        dataframe=spreadsheet_for_summary.iloc[
-            :, list(map(int, str(config("MONTH_COLUMNS")).split(",")))
-        ],
-        print_=debug,
+        print_=print_,
         dataframe_meaning="Year",
     )
 
@@ -234,10 +218,10 @@ def get_statistics(sheet_name:str , debug: bool = False):
     )
     visual_monthly_graph = dashboard.build_time_series_chart(
         id="monthly-graph-" + display_sheet_name,
-        dates=reference_spreadsheets["Day"],
+        dates=spreadsheet_for_summary["Day"],
         data_list=[
-            reference_spreadsheets[column]
-            for column in reference_spreadsheets.iloc[
+            spreadsheet_for_summary[column]
+            for column in spreadsheet_for_summary.iloc[
                 :, list(map(int, str(config("MONTH_COLUMNS")).split(",")))
             ]
         ],
@@ -258,23 +242,10 @@ def get_statistics(sheet_name:str , debug: bool = False):
             "dragmode": "pan",
         },
     )
-    visual_annual_graph_zoom = dashboard.build_time_series_chart(
-        id="annual-graph-zoom-" + display_sheet_name,
-        dates=stacked_temperatures["full_date"],
-        data_list=[stacked_temperatures["Temperature"]],
-        layout={
-            "title": "Annual temperatures",
-            "xaxis": {
-                "title": "Date",
-            },
-            "yaxis": {"title": "Temperature in °C"},
-        },
-    )
 
     return {
       'month_summary' : visual_months_summary,
       'year_summary'  : visual_year_summary,
       'monthly_graph' : visual_monthly_graph,
-      'annual_graph'  : visual_annual_graph,
-      'annual_graph-zoom' : visual_annual_graph_zoom
+      'annual_graph'  : visual_annual_graph
     }

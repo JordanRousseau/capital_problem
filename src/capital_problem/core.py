@@ -10,10 +10,8 @@ def run(debug: bool = bool(int(config("DEBUG")))):
     Args:
         debug (bool, optional): Parameter to run on debug. Defaults to `bool(int(config("DEBUG")))`.
     """
-    stats_SI = content.get_statistics(sheet_name=config("CLIMATE_SHEET_SI"), debug=0)
-
-    #TODO FIX les datas avec mean(prev val + next val) pour les not floats
-    stats_SI_ERRORS = content.get_statistics(sheet_name=config("CLIMATE_SHEET_SI_ERROR"), debug=0)
+    stats_SI = content.get_statistics(sheet_name=config("CLIMATE_SHEET_SI"), print_=debug)
+    stats_SI_ERRORS = content.get_statistics(sheet_name=config("CLIMATE_SHEET_SI_ERROR"), print_=debug)
 
     report = dashboard.build_app_report(
         si_dash_components_list = dash_html_components.Div(
@@ -32,7 +30,7 @@ def run(debug: bool = bool(int(config("DEBUG")))):
                 stats_SI_ERRORS['year_summary'],
                 stats_SI_ERRORS['month_summary'],
                 stats_SI_ERRORS['monthly_graph'],
-                stats_SI_ERRORS['annual_graph'],
+                stats_SI_ERRORS['annual_graph']
             ],
             className="visuals"
         )
