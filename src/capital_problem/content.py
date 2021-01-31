@@ -93,7 +93,29 @@ def get_reference_spreadsheets(
 
     return reference_spreadsheets
 
+def get_alternate_spreadsheets(print_:bool = False) -> pandas.DataFrame:
+    """Get the altenate spreadsheets
 
+    Args:
+        print_ (bool, optional): Print param to print the dataframe. Defaults to False.
+
+    Returns:
+        pandas.DataFrame: Reference spreadsheets
+    """
+    spreadsheet: pandas.DataFrame = pandas.read_excel(
+        io=config("REFERENCE_CLIMATE_PATH"),
+        sheet_name=config("REFERENCE_SHEET")
+    )
+
+    spreadsheet = spreadsheet[['Year', 'm','d' , 'Air temperature (degC)']].rename(columns={'m': 'Month', 'd': 'Day', 'Air temperature (degC)': 'Temperature'})
+
+    spreadsheet['Month'] = spreadsheet['Month'].apply(lambda x: datetime.date(1900, x, 1).strftime("%B"))
+
+    if print_:
+        print(spreadsheet)
+
+    return spreadsheet
+    
 def header_month_convertor(header_list: list):
     """Convert header month to locale's full name
 
@@ -133,7 +155,35 @@ def create_date_column(year: pandas.Series, month: pandas.Series, day: pandas.Se
         format="%Y-%B-%d",
         errors="coerce",
     )
+def get_alternate_statistics(stacked_temperatures: dict, print_: bool = False):
+    alternate_spreadsheet = get_alternate_spreadsheets(print_=print_)
 
+    alternate_spreadsheet['full_date'] = create_date_column(
+        alternate_spreadsheet["Year"],
+        alternate_spreadsheet["Month"],
+        alternate_spreadsheet["Day"],
+    )
+    
+    display_dataframe = alternate_spreadsheet
+    display_dataframe["SI"] = stacked_temperatures[0]["Temperature"]
+    display_dataframe["SI-Errer"] = stacked_temperatures[1]["Temperature"]
+    display_dataframe['Savukoski kirkonkyla'] = alternate_spreadsheet["Temperature"]
+    
+    visual_alternate_annual_graph = dashboard.build_time_series_chart(
+        id="annual-graph-alternate",
+        dates=alternate_spreadsheet["full_date"],
+        data_list=[display_dataframe["SI"], display_dataframe["SI-Error"], display_dataframe['Savukoski kirkonkyla']],
+        layout={
+            "title": "Annual temperatures for Savukoski kirkonkyla",
+            "xaxis": {"title": "Date"},
+            "yaxis": {"title": "Temperature in °C"},
+            "dragmode": "pan",
+        },
+    )
+
+    return {
+        "annual_graph": visual_alternate_annual_graph
+    }
 
 def get_statistics(sheet_name: str, print_: bool = False):
     # Get reference spreadsheets
@@ -266,4 +316,5 @@ def get_statistics(sheet_name: str, print_: bool = False):
         "year_summary": visual_year_summary,
         "monthly_graph": visual_monthly_graph,
         "annual_graph": visual_annual_graph,
+        "stacked_temperatures" : stacked_temperatures
     }

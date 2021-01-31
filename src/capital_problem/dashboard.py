@@ -8,7 +8,7 @@ import plotly.graph_objects
 
 
 def build_app_report(
-    si_dash_components_list: list, si_error_dash_components_list: list
+    si_dash_components_list: list, si_error_dash_components_list: list, alternate_dash_components_list: list
 ):
     external_stylesheets = [
         {
@@ -53,6 +53,11 @@ def build_app_report(
                         value="tab-2",
                         children=[si_error_dash_components_list],
                     ),
+                    dash_core_components.Tab(
+                        label="Resolution",
+                        value="tab-3",
+                        children=[alternate_dash_components_list],
+                    )
                 ],
             ),
         ]
