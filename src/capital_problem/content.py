@@ -6,6 +6,7 @@ import datetime
 import numpy
 from scipy import stats
 
+
 def get_stacked_temperatures(dataframe: pandas.DataFrame, print_: bool = False):
     """Stack temperatures stored in multiple columns with days represented by rows
 
@@ -35,7 +36,9 @@ def get_stacked_temperatures(dataframe: pandas.DataFrame, print_: bool = False):
     return only_temperature
 
 
-def get_reference_spreadsheets(sheet_name: str ,print_: bool = False) -> pandas.DataFrame:
+def get_reference_spreadsheets(
+    sheet_name: str, print_: bool = False
+) -> pandas.DataFrame:
     """Get the reference spreadsheets
 
     Args:
@@ -45,7 +48,7 @@ def get_reference_spreadsheets(sheet_name: str ,print_: bool = False) -> pandas.
     Returns:
         pandas.DataFrame: Reference spreadsheets
     """
-    
+
     # Import XLSX
     reference_spreadsheets: pandas.DataFrame = pandas.read_excel(
         io=config("CLIMATE_PATH"),
@@ -90,6 +93,7 @@ def get_reference_spreadsheets(sheet_name: str ,print_: bool = False) -> pandas.
 
     return reference_spreadsheets
 
+
 def header_month_convertor(header_list: list):
     """Convert header month to locale's full name
 
@@ -131,13 +135,15 @@ def create_date_column(year: pandas.Series, month: pandas.Series, day: pandas.Se
     )
 
 
-def get_statistics(sheet_name:str , print_: bool = False):
+def get_statistics(sheet_name: str, print_: bool = False):
     # Get reference spreadsheets
-    reference_spreadsheets = get_reference_spreadsheets(print_=print_, sheet_name=sheet_name)
+    reference_spreadsheets = get_reference_spreadsheets(
+        print_=print_, sheet_name=sheet_name
+    )
 
     display_sheet_name = sheet_name.replace(" ", "").lower()
 
-    if print_: 
+    if print_:
         print(display_sheet_name)
 
     # Stack all the temperatures with corresponding date
@@ -157,31 +163,43 @@ def get_statistics(sheet_name:str , print_: bool = False):
     ]
 
     stacked_temperatures["Temperature"] = pandas.to_numeric(
-        stacked_temperatures["Temperature"], errors='coerce', downcast='float'
+        stacked_temperatures["Temperature"], errors="coerce", downcast="float"
     ).interpolate()
 
-    # Detects outliers 
+    # Detects outliers
     sk_temp = stacked_temperatures
 
-    sk_temp['mean'] = stacked_temperatures['Temperature'].rolling(window=5, center= True).mean().fillna(method='bfill').fillna(method='ffill')
+    sk_temp["mean"] = (
+        stacked_temperatures["Temperature"]
+        .rolling(window=5, center=True)
+        .mean()
+        .fillna(method="bfill")
+        .fillna(method="ffill")
+    )
 
     threshold = 10
-    difference = numpy.abs(sk_temp['Temperature'] - sk_temp['mean'] )
+    difference = numpy.abs(sk_temp["Temperature"] - sk_temp["mean"])
     outliers = difference > threshold
 
     if print_:
-        print("outliers: " , sk_temp[outliers])
+        print("outliers: ", sk_temp[outliers][["full_date", "Temperature", "mean"]])
 
-    if not outliers.empty :
-         stacked_temperatures.loc[outliers,'Temperature'] = numpy.nan
-         stacked_temperatures['Temperature'] = stacked_temperatures['Temperature'].interpolate()
+    if not outliers.empty:
+        stacked_temperatures.loc[outliers, "Temperature"] = numpy.nan
+        stacked_temperatures["Temperature"] = stacked_temperatures[
+            "Temperature"
+        ].interpolate()
 
     # Unstack data
-    months = stacked_temperatures['Month'].unique()
+    months = stacked_temperatures["Month"].unique()
 
-    spreadsheet_for_summary = stacked_temperatures[['Day', 'Month', 'Temperature']].pivot(index=['Day'], columns='Month')
+    spreadsheet_for_summary = stacked_temperatures[
+        ["Day", "Month", "Temperature"]
+    ].pivot(index=["Day"], columns="Month")
 
-    spreadsheet_for_summary.columns =  spreadsheet_for_summary.columns.droplevel().rename(None)
+    spreadsheet_for_summary.columns = (
+        spreadsheet_for_summary.columns.droplevel().rename(None)
+    )
 
     spreadsheet_for_summary = spreadsheet_for_summary.reindex(months, axis=1)
 
@@ -189,7 +207,7 @@ def get_statistics(sheet_name:str , print_: bool = False):
 
     # Make summary of month columns
     month_summary = summary.column_summary(
-        dataframe= spreadsheet_for_summary.iloc[
+        dataframe=spreadsheet_for_summary.iloc[
             :, list(map(int, str(config("MONTH_COLUMNS")).split(",")))
         ],
         print_=print_,
@@ -214,7 +232,7 @@ def get_statistics(sheet_name:str , print_: bool = False):
     visual_months_summary = dashboard.build_table_component(
         headers=month_summary.get("summary_headers", []),
         data=month_summary.get("summary_data", []),
-        id="summary-table-"+ display_sheet_name,
+        id="summary-table-" + display_sheet_name,
     )
     visual_monthly_graph = dashboard.build_time_series_chart(
         id="monthly-graph-" + display_sheet_name,
@@ -244,8 +262,8 @@ def get_statistics(sheet_name:str , print_: bool = False):
     )
 
     return {
-      'month_summary' : visual_months_summary,
-      'year_summary'  : visual_year_summary,
-      'monthly_graph' : visual_monthly_graph,
-      'annual_graph'  : visual_annual_graph
+        "month_summary": visual_months_summary,
+        "year_summary": visual_year_summary,
+        "monthly_graph": visual_monthly_graph,
+        "annual_graph": visual_annual_graph,
     }

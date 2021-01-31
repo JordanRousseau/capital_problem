@@ -6,7 +6,10 @@ import dash_bootstrap_components
 import pandas
 import plotly.graph_objects
 
-def build_app_report(si_dash_components_list: list, si_error_dash_components_list: list):
+
+def build_app_report(
+    si_dash_components_list: list, si_error_dash_components_list: list
+):
     external_stylesheets = [
         {
             "href": "https://fonts.googleapis.com/css2?"
@@ -38,14 +41,20 @@ def build_app_report(si_dash_components_list: list, si_error_dash_components_lis
                 ],
                 className="header",
             ),
-            dash_core_components.Tabs(id='data-selector-tabs', value='tab-1', children=[
-                dash_core_components.Tab(label='SI', value='tab-1', children=[
-                    si_dash_components_list
-                ]),
-                dash_core_components.Tab(label='SI-erreur', value='tab-2', children =[
-                    si_error_dash_components_list
-                ]),
-            ])
+            dash_core_components.Tabs(
+                id="data-selector-tabs",
+                value="tab-1",
+                children=[
+                    dash_core_components.Tab(
+                        label="SI", value="tab-1", children=[si_dash_components_list]
+                    ),
+                    dash_core_components.Tab(
+                        label="SI-erreur",
+                        value="tab-2",
+                        children=[si_error_dash_components_list],
+                    ),
+                ],
+            ),
         ]
     )
 
