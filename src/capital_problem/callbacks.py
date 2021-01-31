@@ -1,10 +1,5 @@
-import dash
 import dash_core_components
 import dash_html_components
-import dash_table
-import dash_bootstrap_components
-import pandas
-import plotly.graph_objects
 import json
 from dash.dependencies import Input, Output
 
