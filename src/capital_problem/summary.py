@@ -1,5 +1,4 @@
 import pandas
-from decouple import config
 import numpy
 import sys
 
