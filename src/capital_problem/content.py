@@ -166,13 +166,13 @@ def get_alternate_statistics(stacked_temperatures: dict, print_: bool = False):
     
     display_dataframe = alternate_spreadsheet
     display_dataframe["SI"] = stacked_temperatures[0]["Temperature"]
-    display_dataframe["SI-Errer"] = stacked_temperatures[1]["Temperature"]
+    display_dataframe["SI-Erreur"] = stacked_temperatures[1]["Temperature"]
     display_dataframe['Savukoski kirkonkyla'] = alternate_spreadsheet["Temperature"]
     
     visual_alternate_annual_graph = dashboard.build_time_series_chart(
         id="annual-graph-alternate",
         dates=alternate_spreadsheet["full_date"],
-        data_list=[display_dataframe["SI"], display_dataframe["SI-Error"], display_dataframe['Savukoski kirkonkyla']],
+        data_list=[display_dataframe["SI"], display_dataframe["SI-Erreur"], display_dataframe['Savukoski kirkonkyla']],
         layout={
             "title": "Annual temperatures for Savukoski kirkonkyla",
             "xaxis": {"title": "Date"},
