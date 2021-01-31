@@ -1,8 +1,11 @@
+from os import error
+from numpy.core.shape_base import stack
 import pandas
 from decouple import config
 import dashboard
 import summary
 import datetime
+from numpy import nanmean
 
 def get_stacked_temperatures(dataframe: pandas.DataFrame, print_: bool = False):
     """Stack temperatures stored in multiple columns with days represented by rows
@@ -45,8 +48,7 @@ def get_reference_spreadsheets(sheet_name: str ,print_: bool = False) -> pandas.
     """
 
     #TODO Supprimer ce scotch quand la data sera fix
-    if sheet_name == 'SI -erreur':
-      sheet_name= 'SI '
+    
     # Import XLSX
     reference_spreadsheets: pandas.DataFrame = pandas.read_excel(
         io=config("CLIMATE_PATH"),
@@ -89,8 +91,19 @@ def get_reference_spreadsheets(sheet_name: str ,print_: bool = False) -> pandas.
     if print_:
         print(reference_spreadsheets)
 
-    return reference_spreadsheets
+    # for month in reference_spreadsheets.loc[:, reference_spreadsheets.columns != 'Day']:
+    #      #print(reference_spreadsheets[month].shift())
+    #      prev_col_name = month+ "-prev-value"
+    #      next_col_name = month+ "-next-value"
 
+    #      reference_spreadsheets[prev_col_name] = reference_spreadsheets[month].shift(),
+    #      reference_spreadsheets[next_col_name] = reference_spreadsheets[month].shift(-1),
+
+    #      reference_spreadsheets[month] = reference_spreadsheets[month].apply(lambda x: nanmean([reference_spreadsheets[prev_col_name], reference_spreadsheets[next_col_name]) if not float(x) else x)
+        
+    # # print(reference_spreadsheets)
+
+    return reference_spreadsheets
 
 def header_month_convertor(header_list: list):
     """Convert header month to locale's full name
@@ -135,49 +148,11 @@ def create_date_column(year: pandas.Series, month: pandas.Series, day: pandas.Se
 
 def get_statistics(sheet_name:str , debug: bool = False):
     # Get reference spreadsheets
-
     reference_spreadsheets = get_reference_spreadsheets(print_=debug, sheet_name=sheet_name)
 
     display_sheet_name = sheet_name.replace(" ", "").lower()
 
     print(display_sheet_name)
-    # Make summary of month columns
-    month_summary = summary.column_summary(
-        dataframe=reference_spreadsheets.iloc[
-            :, list(map(int, str(config("MONTH_COLUMNS")).split(",")))
-        ],
-        print_=debug,
-        columns_meaning="Months",
-    )
-
-    # Make a year summary
-    year_summary = summary.dataframe_summary(
-        dataframe=reference_spreadsheets.iloc[
-            :, list(map(int, str(config("MONTH_COLUMNS")).split(",")))
-        ],
-        print_=debug,
-        dataframe_meaning="Year",
-    )
-
-    month_summary = summary.column_summary(
-        dataframe=reference_spreadsheets.iloc[
-            :, list(map(int, str(config("MONTH_COLUMNS")).split(",")))
-        ],
-        print_=debug,
-        columns_meaning="Months",
-    )
-
-    # Make a year summary
-    year_summary = summary.dataframe_summary(
-        dataframe=reference_spreadsheets.iloc[
-            :, list(map(int, str(config("MONTH_COLUMNS")).split(",")))
-        ],
-        print_=debug,
-        dataframe_meaning="Year",
-    )
-
-    year_summary_without_meaning = year_summary
-    year_summary_without_meaning.pop("dataframe_meaning", None)
 
     # Stack all the temperatures with corresponding date
     stacked_temperatures = get_stacked_temperatures(
@@ -194,6 +169,60 @@ def get_statistics(sheet_name:str , debug: bool = False):
     stacked_temperatures = stacked_temperatures[
         pandas.notna(stacked_temperatures["full_date"])
     ]
+
+    stacked_temperatures["Temperature"] = pandas.to_numeric(
+        stacked_temperatures["Temperature"], errors='coerce', downcast='float'
+    ).interpolate()
+
+    months = stacked_temperatures['Month'].unique()
+
+    spreadsheet_for_summary = stacked_temperatures[['Day', 'Month', 'Temperature']].pivot(index=['Day'], columns='Month')
+
+    spreadsheet_for_summary.columns =  spreadsheet_for_summary.columns.droplevel().rename(None)
+
+    spreadsheet_for_summary = spreadsheet_for_summary.reindex(months, axis=1)
+    
+    spreadsheet_for_summary.reset_index(level=0, inplace=True)
+    
+
+    print(spreadsheet_for_summary)
+    # Make summary of month columns
+    month_summary = summary.column_summary(
+        dataframe= spreadsheet_for_summary.iloc[
+            :, list(map(int, str(config("MONTH_COLUMNS")).split(",")))
+        ],
+        print_=debug,
+        columns_meaning="Months",
+    )
+
+    # Make a year summary
+    year_summary = summary.dataframe_summary(
+        dataframe=spreadsheet_for_summary.iloc[
+            :, list(map(int, str(config("MONTH_COLUMNS")).split(",")))
+        ],
+        print_=debug,
+        dataframe_meaning="Year",
+    )
+
+    month_summary = summary.column_summary(
+        dataframe=spreadsheet_for_summary.iloc[
+            :, list(map(int, str(config("MONTH_COLUMNS")).split(",")))
+        ],
+        print_=debug,
+        columns_meaning="Months",
+    )
+
+    # Make a year summary
+    year_summary = summary.dataframe_summary(
+        dataframe=spreadsheet_for_summary.iloc[
+            :, list(map(int, str(config("MONTH_COLUMNS")).split(",")))
+        ],
+        print_=debug,
+        dataframe_meaning="Year",
+    )
+
+    year_summary_without_meaning = year_summary
+    year_summary_without_meaning.pop("dataframe_meaning", None)
 
     visual_year_summary = dashboard.build_card_group(
         year_summary_without_meaning, "year-cards"
