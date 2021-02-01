@@ -233,17 +233,17 @@ def get_references_statistics(stacked_temperatures: dict, print_: bool = False):
             name, id="header-references-" + str(key)
         )
 
-        print("========>", stats_between_series.get("dtw", 0))
-
         references.append(
             {
                 "visual_header": visual_header,
                 "annual_graph": visual_alternate_annual_graph,
                 "comparision_summary": visual_alternate_comparision_summary,
                 "score": stats_between_series.get("dtw", 0),
+                "name": name,
             }
         )
 
+    references.sort(key=lambda k: k["score"])
     return references
 
 

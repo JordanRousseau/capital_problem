@@ -28,6 +28,22 @@ def run(debug: bool = bool(int(config("DEBUG")))):
 
     stats_resolution_divs = []
 
+    if stats_resolution:
+        stats_resolution_divs.append(
+            dash_html_components.H2(
+                "Best result is the city of " + stats_resolution[0]["name"]
+            )
+        )
+        stats_resolution_divs.append(
+            dash_html_components.P(
+                "Best result is the city of "
+                + stats_resolution[0]["name"]
+                + "with a marvelous DTW score of "
+                + str(round(stats_resolution[0]["score"], 2))
+                + "."
+            )
+        )
+
     for key, reference in enumerate(stats_resolution, start=0):
         stats_resolution_divs.append(
             dash_html_components.Div(
