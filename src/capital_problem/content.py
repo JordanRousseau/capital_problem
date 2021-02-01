@@ -1,10 +1,11 @@
+import dash_html_components
 import pandas
 from decouple import config
 import dashboard
 import summary
 import datetime
 import numpy
-from scipy import stats
+import compute
 
 
 def get_stacked_temperatures(dataframe: pandas.DataFrame, print_: bool = False):
@@ -93,7 +94,8 @@ def get_reference_spreadsheets(
 
     return reference_spreadsheets
 
-def get_alternate_spreadsheets(print_:bool = False) -> pandas.DataFrame:
+
+def get_alternate_spreadsheets(print_: bool = False) -> pandas.DataFrame:
     """Get the altenate spreadsheets
 
     Args:
@@ -102,20 +104,37 @@ def get_alternate_spreadsheets(print_:bool = False) -> pandas.DataFrame:
     Returns:
         pandas.DataFrame: Reference spreadsheets
     """
-    spreadsheet: pandas.DataFrame = pandas.read_excel(
-        io=config("REFERENCE_CLIMATE_PATH"),
-        sheet_name=config("REFERENCE_SHEET")
-    )
+    spreadsheets: list = []
+    references: list = [
+        str(config("SPREADSHEET_SAVUKOSKI")).split(";"),
+        str(config("SPREADSHEET_HELSINKI")).split(";"),
+    ]
 
-    spreadsheet = spreadsheet[['Year', 'm','d' , 'Air temperature (degC)']].rename(columns={'m': 'Month', 'd': 'Day', 'Air temperature (degC)': 'Temperature'})
+    for reference in references:
+        spreadsheet: pandas.DataFrame = pandas.read_excel(
+            io=reference[1], sheet_name=reference[2]
+        )
 
-    spreadsheet['Month'] = spreadsheet['Month'].apply(lambda x: datetime.date(1900, x, 1).strftime("%B"))
+        spreadsheet = spreadsheet.rename(
+            columns={
+                reference[3]: "Month",
+                reference[4]: "Day",
+                reference[5]: "Temperature",
+            }
+        )
 
-    if print_:
-        print(spreadsheet)
+        spreadsheet["Month"] = spreadsheet["Month"].apply(
+            lambda x: datetime.date(1900, x, 1).strftime("%B")
+        )
 
-    return spreadsheet
-    
+        if print_:
+            print(spreadsheet)
+
+        spreadsheets.append((spreadsheet, reference[0]))
+
+    return spreadsheets
+
+
 def header_month_convertor(header_list: list):
     """Convert header month to locale's full name
 
@@ -155,35 +174,78 @@ def create_date_column(year: pandas.Series, month: pandas.Series, day: pandas.Se
         format="%Y-%B-%d",
         errors="coerce",
     )
-def get_alternate_statistics(stacked_temperatures: dict, print_: bool = False):
-    alternate_spreadsheet = get_alternate_spreadsheets(print_=print_)
 
-    alternate_spreadsheet['full_date'] = create_date_column(
-        alternate_spreadsheet["Year"],
-        alternate_spreadsheet["Month"],
-        alternate_spreadsheet["Day"],
-    )
-    
-    display_dataframe = alternate_spreadsheet
-    display_dataframe["SI"] = stacked_temperatures[0]["Temperature"]
-    display_dataframe["SI-Erreur"] = stacked_temperatures[1]["Temperature"]
-    display_dataframe['Savukoski kirkonkyla'] = alternate_spreadsheet["Temperature"]
-    
-    visual_alternate_annual_graph = dashboard.build_time_series_chart(
-        id="annual-graph-alternate",
-        dates=alternate_spreadsheet["full_date"],
-        data_list=[display_dataframe["SI"], display_dataframe["SI-Erreur"], display_dataframe['Savukoski kirkonkyla']],
-        layout={
-            "title": "Annual temperatures for Savukoski kirkonkyla",
-            "xaxis": {"title": "Date"},
-            "yaxis": {"title": "Temperature in °C"},
-            "dragmode": "pan",
-        },
-    )
 
-    return {
-        "annual_graph": visual_alternate_annual_graph
-    }
+def get_references_statistics(stacked_temperatures: dict, print_: bool = False):
+    spreadsheets = get_alternate_spreadsheets(print_=print_)
+
+    references = []
+
+    for key, packed_spreadsheet in enumerate(spreadsheets, start=0):
+
+        spreadsheet = packed_spreadsheet[0]
+        name = packed_spreadsheet[1]
+
+        spreadsheet["full_date"] = create_date_column(
+            spreadsheet["Year"],
+            spreadsheet["Month"],
+            spreadsheet["Day"],
+        )
+        display_dataframe: pandas.DataFrame = pandas.concat(
+            [
+                spreadsheet["full_date"],
+                stacked_temperatures[0]["Temperature"],
+                stacked_temperatures[1]["Temperature"],
+                spreadsheet["Temperature"],
+            ],
+            axis=1,
+        )
+        display_dataframe.columns = ["full_date", "SI", "SI-Erreur", name]
+
+        stats_between_series = compute.stats_between_series(
+            xaxis_1=stacked_temperatures[0]["full_date"],
+            values_1=stacked_temperatures[0]["Temperature"],
+            xaxis_2=spreadsheet["full_date"],
+            values_2=spreadsheet["Temperature"],
+        )
+
+        visual_alternate_annual_graph = dashboard.build_time_series_chart(
+            id="annual-graph-references-" + str(key),
+            dates=display_dataframe["full_date"],
+            data_list=[
+                display_dataframe["SI"],
+                display_dataframe["SI-Erreur"],
+                display_dataframe[name],
+            ],
+            layout={
+                "title": "Annual temperatures for " + name,
+                "xaxis": {"title": "Date"},
+                "yaxis": {"title": "Temperature in °C"},
+                "dragmode": "pan",
+            },
+        )
+
+        visual_alternate_comparision_summary = dashboard.build_card_group(
+            stats_between_series, "comparision-summary-references-" + str(key)
+        )
+
+        visual_header = dash_html_components.H3(
+            name, id="header-references-" + str(key)
+        )
+
+        print("========>", stats_between_series.get("dtw", 0))
+
+        references.append(
+            {
+                "visual_header": visual_header,
+                "annual_graph": visual_alternate_annual_graph,
+                "comparision_summary": visual_alternate_comparision_summary,
+                "score": stats_between_series.get("dtw", 0),
+            }
+        )
+
+    return references
+
 
 def get_statistics(sheet_name: str, print_: bool = False):
     # Get reference spreadsheets
@@ -316,5 +378,5 @@ def get_statistics(sheet_name: str, print_: bool = False):
         "year_summary": visual_year_summary,
         "monthly_graph": visual_monthly_graph,
         "annual_graph": visual_annual_graph,
-        "stacked_temperatures" : stacked_temperatures
+        "stacked_temperatures": stacked_temperatures,
     }
