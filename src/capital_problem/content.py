@@ -1,6 +1,8 @@
 import dash_html_components
 import pandas
 from decouple import config
+from pandas.io.parsers import read_csv
+from pandas.io.sql import DatabaseError
 import dashboard
 import summary
 import datetime
@@ -95,6 +97,92 @@ def get_reference_spreadsheets(
     return reference_spreadsheets
 
 
+def get_all_capitals_spreadsheets(print_: bool = False) -> list:
+
+    columns = str(config("ALL_CAPITALS_SPREADSHEETS_COLUMNS")).split(",")
+    all_capitals_spreadsheets: pandas.DataFrame = pandas.read_csv(
+        config("ALL_CAPITALS_SPREADSHEETS"),
+        delimiter=",",
+        usecols=columns,
+    )
+
+    # Rename columns
+    all_capitals_spreadsheets.rename(
+        columns={
+            columns[0]: "Year",
+            columns[1]: "Month",
+            columns[2]: "Day",
+            columns[3]: "Temperature",
+            columns[4]: "Capital",
+            columns[5]: "Region",
+        },
+        inplace=True,
+    )
+
+    # Filter on 2018
+    all_capitals_spreadsheets = all_capitals_spreadsheets[
+        all_capitals_spreadsheets["Year"] == 2018
+    ]
+
+    # Filter on Europe
+    all_capitals_spreadsheets = all_capitals_spreadsheets[
+        all_capitals_spreadsheets["Region"] == "Europe"
+    ]
+    # Filter on Capitals
+
+    # Rename month
+    all_capitals_spreadsheets["Month"] = all_capitals_spreadsheets["Month"].apply(
+        lambda x: datetime.date(1900, x, 1).strftime("%B")
+    )
+
+    # Remove duplicates
+    all_capitals_spreadsheets = all_capitals_spreadsheets.drop_duplicates(
+        subset=["Year", "Month", "Day", "Capital"]
+    )
+
+    # Split Dataframe on cities
+    def map_dataframe(tuple_: tuple):
+        tuple_[1]["Temperature"] = remove_outliers(tuple_[1], "Temperature")
+        tuple_[1]["Temperature"] = (tuple_[1]["Temperature"] - 32) * 5 / 9
+        tuple_[1].reset_index(inplace=True)
+        return (tuple_[1], tuple_[0])
+
+    spreadsheets = list(
+        map(
+            map_dataframe,
+            list(all_capitals_spreadsheets.groupby("Capital")),
+        )
+    )
+
+    return spreadsheets
+
+
+def remove_outliers(
+    dataframe: pandas.DataFrame, column_outlier_name: str, print_: bool = False
+) -> pandas.Series:
+    # Detects outliers
+    dataframe["mean"] = (
+        dataframe[column_outlier_name]
+        .rolling(window=5, center=True)
+        .mean()
+        .fillna(method="bfill")
+        .fillna(method="ffill")
+    )
+
+    threshold = 10
+    difference = numpy.abs(dataframe[column_outlier_name] - dataframe["mean"])
+    outliers = difference > threshold
+
+    if print_:
+        print("outliers: ", dataframe[outliers][[column_outlier_name, "mean"]])
+
+    if not outliers.empty:
+        dataframe.loc[outliers, column_outlier_name] = numpy.nan
+        dataframe[column_outlier_name] = dataframe[column_outlier_name].interpolate()
+
+    return dataframe[column_outlier_name]
+
+
 def get_alternate_spreadsheets(print_: bool = False) -> pandas.DataFrame:
     """Get the altenate spreadsheets
 
@@ -102,7 +190,7 @@ def get_alternate_spreadsheets(print_: bool = False) -> pandas.DataFrame:
         print_ (bool, optional): Print param to print the dataframe. Defaults to False.
 
     Returns:
-        pandas.DataFrame: Reference spreadsheets
+        list: Reference spreadsheets
     """
     spreadsheets: list = []
     references: list = [
@@ -177,7 +265,7 @@ def create_date_column(year: pandas.Series, month: pandas.Series, day: pandas.Se
 
 
 def get_references_statistics(stacked_temperatures: dict, print_: bool = False):
-    spreadsheets = get_alternate_spreadsheets(print_=print_)
+    spreadsheets = get_all_capitals_spreadsheets(print_=print_)
 
     references = []
 
@@ -200,6 +288,7 @@ def get_references_statistics(stacked_temperatures: dict, print_: bool = False):
             ],
             axis=1,
         )
+
         display_dataframe.columns = ["full_date", "SI", "SI-Erreur", name]
 
         stats_between_series = compute.stats_between_series(
@@ -207,7 +296,10 @@ def get_references_statistics(stacked_temperatures: dict, print_: bool = False):
             values_1=stacked_temperatures[0]["Temperature"],
             xaxis_2=spreadsheet["full_date"],
             values_2=spreadsheet["Temperature"],
+            print_=True if name == "Zurich" else False,
         )
+
+        print(display_dataframe["SI"])
 
         visual_alternate_annual_graph = dashboard.build_time_series_chart(
             id="annual-graph-references-" + str(key),
@@ -234,6 +326,9 @@ def get_references_statistics(stacked_temperatures: dict, print_: bool = False):
             name, id="header-references-" + str(key)
         )
 
+        if print_:
+            print("dataframe", name, ":", stats_between_series.get("dtw", 0))
+
         references.append(
             {
                 "visual_header": visual_header,
@@ -245,7 +340,7 @@ def get_references_statistics(stacked_temperatures: dict, print_: bool = False):
         )
 
     references.sort(key=lambda k: k["score"])
-    return references
+    return references[0:5]
 
 
 def get_statistics(sheet_name: str, print_: bool = False):
