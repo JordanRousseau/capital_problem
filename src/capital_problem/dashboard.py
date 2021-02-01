@@ -103,7 +103,7 @@ def build_card_group(data_dict: dict, id: str):
 
 
 def build_time_series_chart(
-    dates: pandas.Series, data_list: list, layout: dict, id: str
+    dates: pandas.Series, data_list: list, layout: dict, id: str, all_: bool = False
 ):
     graph_figure = plotly.graph_objects.Figure(layout=layout)
 
@@ -115,7 +115,7 @@ def build_time_series_chart(
                 mode="lines+markers",
                 line_shape="spline",
                 name=data.name,
-                visible="legendonly" if key else None,
+                visible="legendonly" if key and not all_ else None,
             )
         )
 

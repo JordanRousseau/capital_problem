@@ -223,6 +223,7 @@ def get_references_statistics(stacked_temperatures: dict, print_: bool = False):
                 "yaxis": {"title": "Temperature in °C"},
                 "dragmode": "pan",
             },
+            all_=True,
         )
 
         visual_alternate_comparision_summary = dashboard.build_card_group(
