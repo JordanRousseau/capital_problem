@@ -19,7 +19,7 @@ To do that, we used the library Dash, made to made interfaces and host a local w
 We modified the dataframe, the goal was to get a dataframe where each row will represent a date and a temperature. So we used the pandas melt function. It allowed us to create the day, month and Temperature columns.
 Then we aggregated the date in a full-date. So we could use it in a graph.
 
-### Step 3 : Setup a 30 days zoom
+### Step 3 : Setup a 30 days zoom.
 We made the mentioned graphs, and thanks to the Dash callbacks we setup a special zoom on annual graphs. We zoomed on a selected point and the 15 days before and after that date.
 
 ### Step 4: Same ways on SI-Erreur sheet.
@@ -80,6 +80,10 @@ STD difference score:
 - Oslo: 0,12
 
 `Helsinki` and `Oslo` seems to be good candidates to be the capital when analysing STD differences
+
+Finally with these score (DTW, PCM and STD) we mapped them between 0 and 1 and we did the sum. 
+0 is the basis curve and 3 is the worst curve possible. 
+By doing that we assure a correlation between our different calculations, to get the best result possible (the lower one). Area under curve and frechet distance were skipped of this calculation because there redundant with DTW and PCM.
 
 According to this different tests, we can guess that `Helsinki` is probably the origin of the climate data.
 
@@ -186,7 +190,13 @@ A step by step series of examples that tell you how to get a development env run
    CLIMATE_PATH = .data/Climat.xlsx
    REFERENCE_CLIMATE_PATH = .data/Savukoski kirkonkyla.xlsx
    ```
-7. **Running the app**
+7. **Set up the files**
+   
+   Put the Climate and Savukoski xlsx files in a .data directory in the root directory.
+
+   And add in the same directory the csv file from [Kaggle](https://www.kaggle.com/sudalairajkumar/daily-temperature-of-major-cities)
+
+8. **Running the app**
    ```sh
    python src/capital_problem/core.py
    ``` 
