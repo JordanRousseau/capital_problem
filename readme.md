@@ -85,10 +85,12 @@ Finally with these score (DTW, PCM and STD) we mapped them between 0 and 1 and w
 0 is the basis curve and 3 is the worst curve possible. 
 By doing that we assure a correlation between our different calculations, to get the best result possible (the lower one). Area under curve and frechet distance were skipped of this calculation because there redundant with DTW and PCM.
 
-According to this different tests, we can guess that `Helsinki` is probably the origin of the climate data with a score of 0,41.
+According to this different tests, we can guess that `Oslo` is probably the origin of the climate data with a score of 0,72.
 
 The results are depending on data reliability and can be altered by the data interpolation on empty values.
-So the top results are hand to hand, and it's hard to select one especially.
+Moreover The top results are hand to hand, and it's hard to select one especially. And we don't know the year. 
+We chose a dataset with a large panel of cities, nevertheless some European capitals are not included in it, it could be so one capital that is missing in the dataset.
+
 ## Getting Started
 
 These instructions will get you a copy of the project up and running on your local machine for development and testing purposes. See deployment for notes on how to deploy the project on a live system.
