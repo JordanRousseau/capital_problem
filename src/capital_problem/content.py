@@ -1,10 +1,13 @@
+import dash_html_components
 import pandas
 from decouple import config
+from pandas.io.parsers import read_csv
+from pandas.io.sql import DatabaseError
 import dashboard
 import summary
 import datetime
 import numpy
-from scipy import stats
+import compute
 
 
 def get_stacked_temperatures(dataframe: pandas.DataFrame, print_: bool = False):
@@ -93,29 +96,136 @@ def get_reference_spreadsheets(
 
     return reference_spreadsheets
 
-def get_alternate_spreadsheets(print_:bool = False) -> pandas.DataFrame:
+
+def get_all_capitals_spreadsheets(print_: bool = False) -> list:
+
+    columns = str(config("ALL_CAPITALS_SPREADSHEETS_COLUMNS")).split(",")
+    all_capitals_spreadsheets: pandas.DataFrame = pandas.read_csv(
+        config("ALL_CAPITALS_SPREADSHEETS"),
+        delimiter=",",
+        usecols=columns,
+    )
+
+    # Rename columns
+    all_capitals_spreadsheets.rename(
+        columns={
+            columns[0]: "Year",
+            columns[1]: "Month",
+            columns[2]: "Day",
+            columns[3]: "Temperature",
+            columns[4]: "Capital",
+            columns[5]: "Region",
+        },
+        inplace=True,
+    )
+
+    # Filter on 2018
+    all_capitals_spreadsheets = all_capitals_spreadsheets[
+        all_capitals_spreadsheets["Year"] == 2018
+    ]
+
+    # Filter on Europe
+    all_capitals_spreadsheets = all_capitals_spreadsheets[
+        all_capitals_spreadsheets["Region"] == "Europe"
+    ]
+    # Filter on Capitals
+    all_capitals_spreadsheets = all_capitals_spreadsheets[
+        all_capitals_spreadsheets["Capital"].isin(
+            str(config("CAPITALS_LIST")).split(";")
+        )
+    ]
+
+    # Rename month
+    all_capitals_spreadsheets["Month"] = all_capitals_spreadsheets["Month"].apply(
+        lambda x: datetime.date(1900, x, 1).strftime("%B")
+    )
+
+    # Remove duplicates
+    all_capitals_spreadsheets = all_capitals_spreadsheets.drop_duplicates(
+        subset=["Year", "Month", "Day", "Capital"]
+    )
+
+    # Split Dataframe on cities
+    def map_dataframe(tuple_: tuple):
+        # Remove outliers
+        tuple_[1]["Temperature"] = remove_outliers(tuple_[1], "Temperature")
+
+        # Transform temperatures from °F to °C
+        tuple_[1]["Temperature"] = (tuple_[1]["Temperature"] - 32) * 5 / 9
+
+        # Reset fuckedup index
+        tuple_[1].reset_index(inplace=True)
+
+        return (tuple_[1], tuple_[0])
+
+    spreadsheets = list(
+        map(
+            map_dataframe,
+            list(all_capitals_spreadsheets.groupby("Capital")),
+        )
+    )
+
+    return spreadsheets
+
+
+def remove_outliers(
+    dataframe: pandas.DataFrame, column_outlier_name: str, print_: bool = False
+) -> pandas.Series:
+    # Detects outliers
+    dataframe["mean"] = (
+        dataframe[column_outlier_name]
+        .rolling(window=5, center=True)
+        .mean()
+        .fillna(method="bfill")
+        .fillna(method="ffill")
+    )
+
+    threshold = 10
+    difference = numpy.abs(dataframe[column_outlier_name] - dataframe["mean"])
+    outliers = difference > threshold
+
+    if print_:
+        print("outliers: ", dataframe[outliers][[column_outlier_name, "mean"]])
+
+    if not outliers.empty:
+        dataframe.loc[outliers, column_outlier_name] = numpy.nan
+        dataframe[column_outlier_name] = dataframe[column_outlier_name].interpolate()
+
+    return dataframe[column_outlier_name]
+
+
+def get_alternate_spreadsheets(print_: bool = False) -> pandas.DataFrame:
     """Get the altenate spreadsheets
 
     Args:
         print_ (bool, optional): Print param to print the dataframe. Defaults to False.
 
     Returns:
-        pandas.DataFrame: Reference spreadsheets
+        list: Reference spreadsheets
     """
+    reference: list = str(config("SPREADSHEET_SAVUKOSKI")).split(";")
     spreadsheet: pandas.DataFrame = pandas.read_excel(
-        io=config("REFERENCE_CLIMATE_PATH"),
-        sheet_name=config("REFERENCE_SHEET")
+        io=reference[1], sheet_name=reference[2]
     )
 
-    spreadsheet = spreadsheet[['Year', 'm','d' , 'Air temperature (degC)']].rename(columns={'m': 'Month', 'd': 'Day', 'Air temperature (degC)': 'Temperature'})
+    spreadsheet = spreadsheet.rename(
+        columns={
+            reference[3]: "Month",
+            reference[4]: "Day",
+            reference[5]: "Temperature",
+        }
+    )
 
-    spreadsheet['Month'] = spreadsheet['Month'].apply(lambda x: datetime.date(1900, x, 1).strftime("%B"))
+    spreadsheet["Month"] = spreadsheet["Month"].apply(
+        lambda x: datetime.date(1900, x, 1).strftime("%B")
+    )
 
     if print_:
         print(spreadsheet)
 
-    return spreadsheet
-    
+    return (spreadsheet, reference[0])
+
+
 def header_month_convertor(header_list: list):
     """Convert header month to locale's full name
 
@@ -155,35 +265,256 @@ def create_date_column(year: pandas.Series, month: pandas.Series, day: pandas.Se
         format="%Y-%B-%d",
         errors="coerce",
     )
-def get_alternate_statistics(stacked_temperatures: dict, print_: bool = False):
-    alternate_spreadsheet = get_alternate_spreadsheets(print_=print_)
 
-    alternate_spreadsheet['full_date'] = create_date_column(
-        alternate_spreadsheet["Year"],
-        alternate_spreadsheet["Month"],
-        alternate_spreadsheet["Day"],
+
+def get_references_statistics(stacked_temperatures: dict, print_: bool = False):
+    spreadsheets = get_all_capitals_spreadsheets(print_=print_)
+
+    references = []
+
+    for key, packed_spreadsheet in enumerate(spreadsheets, start=0):
+
+        spreadsheet = packed_spreadsheet[0]
+        name = packed_spreadsheet[1]
+
+        spreadsheet["full_date"] = create_date_column(
+            spreadsheet["Year"],
+            spreadsheet["Month"],
+            spreadsheet["Day"],
+        )
+        display_dataframe: pandas.DataFrame = pandas.concat(
+            [
+                spreadsheet["full_date"],
+                stacked_temperatures[0]["Temperature"],
+                stacked_temperatures[1]["Temperature"],
+                spreadsheet["Temperature"],
+            ],
+            axis=1,
+        )
+
+        display_dataframe.columns = ["full_date", "SI", "SI-Erreur", name]
+
+        stats_between_series = compute.stats_between_series(
+            xaxis_1=stacked_temperatures[0]["full_date"],
+            values_1=stacked_temperatures[0]["Temperature"],
+            xaxis_2=spreadsheet["full_date"],
+            values_2=spreadsheet["Temperature"],
+        )
+
+        visual_alternate_annual_graph = dashboard.build_time_series_chart(
+            id="annual-graph-references-" + str(key),
+            dates=display_dataframe["full_date"],
+            data_list=[
+                display_dataframe["SI"],
+                display_dataframe["SI-Erreur"],
+                display_dataframe[name],
+            ],
+            layout={
+                "title": "Annual temperatures for " + name,
+                "xaxis": {"title": "Date"},
+                "yaxis": {"title": "Temperature in °C"},
+                "dragmode": "pan",
+            },
+            all_=True,
+        )
+
+        visual_alternate_comparision_summary = dashboard.build_card_group(
+            stats_between_series, "comparision-summary-references-" + str(key)
+        )
+
+        visual_header = dash_html_components.H3(
+            name, id="header-references-" + str(key)
+        )
+
+        if print_:
+            print("dataframe", name, ":", stats_between_series.get("dtw", 0))
+
+        references.append(
+            {
+                "visual_header": visual_header,
+                "annual_graph": visual_alternate_annual_graph,
+                "comparision_summary": visual_alternate_comparision_summary,
+                "score": stats_between_series.get("dtw", 0),
+                "name": name,
+            }
+        )
+
+    references.sort(key=lambda k: k["score"])
+    return references[0:5]
+
+
+def get_savukoski_statistics(stacked_temperatures: dict, print_: bool = False):
+    savukoski = get_alternate_spreadsheets(print_=print_)
+
+    spreadsheet = savukoski[0]
+    name = savukoski[1]
+
+    spreadsheet["full_date"] = create_date_column(
+        spreadsheet["Year"],
+        spreadsheet["Month"],
+        spreadsheet["Day"],
     )
-    
-    display_dataframe = alternate_spreadsheet
-    display_dataframe["SI"] = stacked_temperatures[0]["Temperature"]
-    display_dataframe["SI-Erreur"] = stacked_temperatures[1]["Temperature"]
-    display_dataframe['Savukoski kirkonkyla'] = alternate_spreadsheet["Temperature"]
-    
+    display_dataframe: pandas.DataFrame = pandas.concat(
+        [
+            spreadsheet["full_date"],
+            stacked_temperatures[0]["Temperature"],
+            stacked_temperatures[1]["Temperature"],
+            spreadsheet["Temperature"],
+        ],
+        axis=1,
+    )
+
+    display_dataframe.columns = ["full_date", "SI", "SI-Erreur", name]
+
+    stats_between_series = compute.stats_between_series(
+        xaxis_1=stacked_temperatures[0]["full_date"],
+        values_1=stacked_temperatures[0]["Temperature"],
+        xaxis_2=spreadsheet["full_date"],
+        values_2=spreadsheet["Temperature"],
+    )
+
     visual_alternate_annual_graph = dashboard.build_time_series_chart(
-        id="annual-graph-alternate",
-        dates=alternate_spreadsheet["full_date"],
-        data_list=[display_dataframe["SI"], display_dataframe["SI-Erreur"], display_dataframe['Savukoski kirkonkyla']],
+        id="annual-graph-savukoski",
+        dates=display_dataframe["full_date"],
+        data_list=[
+            display_dataframe["SI"],
+            display_dataframe["SI-Erreur"],
+            display_dataframe[name],
+        ],
         layout={
-            "title": "Annual temperatures for Savukoski kirkonkyla",
+            "title": "Annual temperatures for " + name,
             "xaxis": {"title": "Date"},
             "yaxis": {"title": "Temperature in °C"},
             "dragmode": "pan",
         },
+        all_=True,
     )
 
+    visual_alternate_comparision_summary = dashboard.build_card_group(
+        stats_between_series, "comparision-summary-savukoski"
+    )
+
+    visual_header = dash_html_components.H2(
+        "comparision with " + name + " for climate similarities", id="header-savukoski"
+    )
+
+    similarity_text = ""
+
+    if stats_between_series.get("dtw", 0) < 100:
+        similarity_text = (
+            "the climate is similar to "
+            + name
+            + ". We should test capitals in a cold environnement"
+        )
+    elif stats_between_series.get("dtw", 0) < 200:
+        similarity_text = (
+            "the climate has similarities to "
+            + name
+            + ". We should test capitals in a cold or temperate environnement"
+        )
+    elif stats_between_series.get("dtw", 0) < 300:
+        similarity_text = (
+            "the climate is a bit different from " + name + ". It might be temperate"
+        )
+    else:
+        similarity_text = (
+            "the climate is different from "
+            + name
+            + ". We should test capitals not in a cold environnement"
+        )
+
+    visual_similarities = dash_html_components.P(
+        "With a score of "
+        + str(round(stats_between_series.get("dtw", 0), 2))
+        + ", "
+        + similarity_text,
+    )
+    if print_:
+        print("dataframe", name, ":", stats_between_series.get("dtw", 0))
+
     return {
-        "annual_graph": visual_alternate_annual_graph
+        "visual_header": visual_header,
+        "annual_graph": visual_alternate_annual_graph,
+        "comparision_summary": visual_alternate_comparision_summary,
+        "similarities": visual_similarities,
+        "score": stats_between_series.get("dtw", 0),
+        "name": name,
     }
+
+
+def get_statistics_dtw_proof(stacked_temperatures: dict, print_: bool = False):
+    display_dataframe: pandas.DataFrame = pandas.concat(
+        [
+            stacked_temperatures[0]["full_date"],
+            stacked_temperatures[0]["Temperature"],
+            stacked_temperatures[1]["Temperature"],
+        ],
+        axis=1,
+    )
+
+    display_dataframe.columns = ["full_date", "SI", "SI-Erreur"]
+
+    stats_between_series = compute.stats_between_series(
+        xaxis_1=stacked_temperatures[0]["full_date"],
+        values_1=stacked_temperatures[0]["Temperature"],
+        xaxis_2=stacked_temperatures[1]["full_date"],
+        values_2=stacked_temperatures[1]["Temperature"],
+    )
+
+    visual_alternate_annual_graph = dashboard.build_time_series_chart(
+        id="annual-graph-dtw-proof",
+        dates=display_dataframe["full_date"],
+        data_list=[
+            display_dataframe["SI"],
+            display_dataframe["SI-Erreur"],
+        ],
+        layout={
+            "title": "Annual temperatures for SI and SI-Erreur",
+            "xaxis": {"title": "Date"},
+            "yaxis": {"title": "Temperature in °C"},
+            "dragmode": "pan",
+        },
+        all_=True,
+    )
+
+    visual_alternate_comparision_summary = dashboard.build_card_group(
+        stats_between_series, "comparision-summary-dtw-proof"
+    )
+
+    visual_header = dash_html_components.H2(
+        "Comparision between SI and SI-Erreur for dtw proof", id="header-dtw-proof"
+    )
+
+    similarity_text = ""
+
+    if stats_between_series.get("dtw", 0) < 50:
+        similarity_text = "the dtw statistic work for comparing two ordered datasets 🥳."
+    else:
+        similarity_text = "we should use an other comparative method."
+
+    visual_similarities = dash_html_components.Div(
+        children=[
+            dash_html_components.P(
+                "To test dtw effectiveness, we will test it on SI and SI-Error wich are very similar datasets. the result should state between 0 and 50. The more dtw is arround 0, the more similar datasets are",
+            ),
+            dash_html_components.P(
+                "With a score of "
+                + str(round(stats_between_series.get("dtw", 0), 2))
+                + ", "
+                + similarity_text,
+            ),
+        ],
+    )
+    if print_:
+        print("dtw test :", stats_between_series.get("dtw", 0))
+
+    return {
+        "visual_header": visual_header,
+        "annual_graph": visual_alternate_annual_graph,
+        "comparision_summary": visual_alternate_comparision_summary,
+        "similarities": visual_similarities,
+    }
+
 
 def get_statistics(sheet_name: str, print_: bool = False):
     # Get reference spreadsheets
@@ -316,5 +647,5 @@ def get_statistics(sheet_name: str, print_: bool = False):
         "year_summary": visual_year_summary,
         "monthly_graph": visual_monthly_graph,
         "annual_graph": visual_annual_graph,
-        "stacked_temperatures" : stacked_temperatures
+        "stacked_temperatures": stacked_temperatures,
     }

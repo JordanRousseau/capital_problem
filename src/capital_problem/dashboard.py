@@ -1,14 +1,19 @@
 import dash
 import dash_core_components
 import dash_html_components
+from dash_html_components.Div import Div
 import dash_table
 import dash_bootstrap_components
 import pandas
 import plotly.graph_objects
+import json
+from decouple import config
 
 
 def build_app_report(
-    si_dash_components_list: list, si_error_dash_components_list: list, alternate_dash_components_list: list
+    si_dash_components_list: list,
+    si_error_dash_components_list: list,
+    alternate_dash_components_list: list,
 ):
     external_stylesheets = [
         {
@@ -46,18 +51,29 @@ def build_app_report(
                 value="tab-1",
                 children=[
                     dash_core_components.Tab(
-                        label="SI", value="tab-1", children=[si_dash_components_list]
+                        label="SI",
+                        value="tab-1",
+                        children=dash_html_components.Div(
+                            children=si_dash_components_list,
+                            className="visuals",
+                        ),
                     ),
                     dash_core_components.Tab(
                         label="SI-erreur",
                         value="tab-2",
-                        children=[si_error_dash_components_list],
+                        children=dash_html_components.Div(
+                            children=si_error_dash_components_list,
+                            className="visuals",
+                        ),
                     ),
                     dash_core_components.Tab(
                         label="Resolution",
                         value="tab-3",
-                        children=[alternate_dash_components_list],
-                    )
+                        children=dash_html_components.Div(
+                            children=alternate_dash_components_list,
+                            className="visuals",
+                        ),
+                    ),
                 ],
             ),
         ]
@@ -101,7 +117,7 @@ def build_card_group(data_dict: dict, id: str):
 
 
 def build_time_series_chart(
-    dates: pandas.Series, data_list: list, layout: dict, id: str
+    dates: pandas.Series, data_list: list, layout: dict, id: str, all_: bool = False
 ):
     graph_figure = plotly.graph_objects.Figure(layout=layout)
 
@@ -113,7 +129,7 @@ def build_time_series_chart(
                 mode="lines+markers",
                 line_shape="spline",
                 name=data.name,
-                visible="legendonly" if key else None,
+                visible="legendonly" if key and not all_ else None,
             )
         )
 
@@ -124,3 +140,39 @@ def build_time_series_chart(
 
 if __name__ == "__main__":
     build_app_report(dash_components_list=[]).run_server(debug=True)
+
+
+def map_display():
+    with open("src/capital_problem/assets/capitals.geojson") as file:
+        data = json.loads(file.read())
+
+    if data:
+        dataframe = pandas.DataFrame({"col1": ["FR", "GB"], "col2": [3, 4]})
+
+        thelist = data["features"]
+        locations = [item["id"] for item in thelist]
+
+        mapboxt = config("MAP_TOKEN")
+
+        figure = plotly.graph_objects.Figure(
+            plotly.graph_objects.Choropleth(
+                z=dataframe,  # This is the data.
+                geojson=data,
+                locations=locations,
+                colorscale="reds",
+                colorbar=dict(thickness=20, ticklen=3),
+                text=locations,
+                hoverinfo="all",
+                marker_line_width=1,
+                marker_opacity=0.75,
+            )
+        )
+        figure.update_layout(
+            height=300,
+            mapbox=dict(
+                accesstoken=mapboxt,
+                style="basic",
+            ),
+            margin={"r": 0, "t": 0, "l": 0, "b": 0},
+        )
+        return dash_core_components.Graph(id="yolo", figure=figure)
