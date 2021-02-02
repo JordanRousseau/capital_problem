@@ -104,7 +104,14 @@ def build_card_group(data_dict: dict, id: str):
             dash_bootstrap_components.Card(
                 children=dash_bootstrap_components.CardBody(
                     [
-                        dash_html_components.H4(str(element), className="card-title"),
+                        dash_html_components.H4(
+                            str(
+                                round(element, 2)
+                                if type(element) == int or float
+                                else element
+                            ),
+                            className="card-title",
+                        ),
                         dash_html_components.H6(str(key), className="card-subtitle"),
                     ]
                 ),
