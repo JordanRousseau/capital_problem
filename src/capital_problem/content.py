@@ -8,6 +8,7 @@ import summary
 import datetime
 import numpy
 import compute
+import sys
 
 
 def get_stacked_temperatures(dataframe: pandas.DataFrame, print_: bool = False):
@@ -269,7 +270,11 @@ def create_date_column(year: pandas.Series, month: pandas.Series, day: pandas.Se
 
 def get_references_statistics(stacked_temperatures: dict, print_: bool = False):
     spreadsheets = get_all_capitals_spreadsheets(print_=print_)
-
+    dtw_low, dtw_high = 0, -sys.maxsize - 1
+    frechet_dist_low, frechet_dist_high = 0, -sys.maxsize - 1
+    pcm_low, pcm_high = 0, -sys.maxsize - 1
+    area_low, area_high = 0, -sys.maxsize - 1
+    std_low, std_high = 0, -sys.maxsize - 1
     references = []
 
     for key, packed_spreadsheet in enumerate(spreadsheets, start=0):
@@ -301,6 +306,23 @@ def get_references_statistics(stacked_temperatures: dict, print_: bool = False):
             values_2=spreadsheet["Temperature"],
         )
 
+        dtw_low, dtw_high = min(stats_between_series.get("dtw"), dtw_low), max(
+            dtw_high, stats_between_series.get("dtw")
+        )
+        frechet_dist_low, frechet_dist_high = (
+            min(stats_between_series.get("frechet_dist"), frechet_dist_low),
+            max(frechet_dist_high, stats_between_series.get("frechet_dist")),
+        )
+        pcm_low, pcm_high = min(stats_between_series.get("pcm"), pcm_low), max(
+            pcm_high, stats_between_series.get("pcm")
+        )
+        area_low, area_high = min(stats_between_series.get("area"), area_low), max(
+            area_high, stats_between_series.get("area")
+        )
+        std_low, std_high = min(stats_between_series.get("std"), std_low), max(
+            std_high, stats_between_series.get("std")
+        )
+
         visual_alternate_annual_graph = dashboard.build_time_series_chart(
             id="annual-graph-references-" + str(key),
             dates=display_dataframe["full_date"],
@@ -318,26 +340,41 @@ def get_references_statistics(stacked_temperatures: dict, print_: bool = False):
             all_=True,
         )
 
-        visual_alternate_comparision_summary = dashboard.build_card_group(
-            stats_between_series, "comparision-summary-references-" + str(key)
-        )
-
         visual_header = dash_html_components.H3(
             name, id="header-references-" + str(key)
         )
-
-        if print_:
-            print("dataframe", name, ":", stats_between_series.get("dtw", 0))
 
         references.append(
             {
                 "visual_header": visual_header,
                 "annual_graph": visual_alternate_annual_graph,
-                "comparision_summary": visual_alternate_comparision_summary,
-                "score": stats_between_series.get("dtw", 0),
+                "comparision_summary": None,
+                "score": 0,
                 "name": name,
+                "stats_between_series": stats_between_series,
             }
         )
+
+    for key, reference in enumerate(references, start=0):
+        reference["score"] = numpy.abs(
+            float(reference.get("stats_between_series").get("dtw") - dtw_low)
+            / float(dtw_low - dtw_high)
+            + float(reference.get("stats_between_series").get("pcm") - pcm_low)
+            / float(pcm_low - pcm_high)
+            + float(reference.get("stats_between_series").get("std") - std_low)
+            / float(std_low - std_high)
+        )
+
+        reference["comparision_summary"] = dashboard.build_card_group(
+            {
+                **dict(reference.get("stats_between_series")),
+                "Score": reference.get("score"),
+            },
+            "comparision-summary-references-" + str(key),
+        )
+
+        if print_:
+            print("dataframe", reference.get("name"), ":", reference.get("score", 0))
 
     references.sort(key=lambda k: k["score"])
     return references[0:5]

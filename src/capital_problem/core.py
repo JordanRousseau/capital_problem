@@ -55,7 +55,7 @@ def run(debug: bool = bool(int(config("DEBUG")))):
             dash_html_components.P(
                 "Best result is the city of "
                 + stats_resolution[0]["name"]
-                + " with a marvelous DTW score of "
+                + " with a marvelous score of "
                 + str(round(stats_resolution[0]["score"], 2))
                 + ".",
                 className="visuals",
