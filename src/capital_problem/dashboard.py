@@ -1,6 +1,7 @@
 import dash
 import dash_core_components
 import dash_html_components
+from dash_html_components.Div import Div
 import dash_table
 import dash_bootstrap_components
 import pandas
@@ -48,17 +49,28 @@ def build_app_report(
                 value="tab-1",
                 children=[
                     dash_core_components.Tab(
-                        label="SI", value="tab-1", children=[si_dash_components_list]
+                        label="SI",
+                        value="tab-1",
+                        children=dash_html_components.Div(
+                            children=si_dash_components_list,
+                            className="visuals",
+                        ),
                     ),
                     dash_core_components.Tab(
                         label="SI-erreur",
                         value="tab-2",
-                        children=[si_error_dash_components_list],
+                        children=dash_html_components.Div(
+                            children=si_error_dash_components_list,
+                            className="visuals",
+                        ),
                     ),
                     dash_core_components.Tab(
                         label="Resolution",
                         value="tab-3",
-                        children=alternate_dash_components_list,
+                        children=dash_html_components.Div(
+                            children=alternate_dash_components_list,
+                            className="visuals",
+                        ),
                     ),
                 ],
             ),

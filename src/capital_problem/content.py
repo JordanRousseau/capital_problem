@@ -142,9 +142,15 @@ def get_all_capitals_spreadsheets(print_: bool = False) -> list:
 
     # Split Dataframe on cities
     def map_dataframe(tuple_: tuple):
+        # Remove outliers
         tuple_[1]["Temperature"] = remove_outliers(tuple_[1], "Temperature")
+
+        # Transform temperatures from °F to °C
         tuple_[1]["Temperature"] = (tuple_[1]["Temperature"] - 32) * 5 / 9
+
+        # Reset fuckedup index
         tuple_[1].reset_index(inplace=True)
+
         return (tuple_[1], tuple_[0])
 
     spreadsheets = list(
@@ -192,35 +198,27 @@ def get_alternate_spreadsheets(print_: bool = False) -> pandas.DataFrame:
     Returns:
         list: Reference spreadsheets
     """
-    spreadsheets: list = []
-    references: list = [
-        str(config("SPREADSHEET_SAVUKOSKI")).split(";"),
-        str(config("SPREADSHEET_HELSINKI")).split(";"),
-    ]
+    reference: list = str(config("SPREADSHEET_SAVUKOSKI")).split(";")
+    spreadsheet: pandas.DataFrame = pandas.read_excel(
+        io=reference[1], sheet_name=reference[2]
+    )
 
-    for reference in references:
-        spreadsheet: pandas.DataFrame = pandas.read_excel(
-            io=reference[1], sheet_name=reference[2]
-        )
+    spreadsheet = spreadsheet.rename(
+        columns={
+            reference[3]: "Month",
+            reference[4]: "Day",
+            reference[5]: "Temperature",
+        }
+    )
 
-        spreadsheet = spreadsheet.rename(
-            columns={
-                reference[3]: "Month",
-                reference[4]: "Day",
-                reference[5]: "Temperature",
-            }
-        )
+    spreadsheet["Month"] = spreadsheet["Month"].apply(
+        lambda x: datetime.date(1900, x, 1).strftime("%B")
+    )
 
-        spreadsheet["Month"] = spreadsheet["Month"].apply(
-            lambda x: datetime.date(1900, x, 1).strftime("%B")
-        )
+    if print_:
+        print(spreadsheet)
 
-        if print_:
-            print(spreadsheet)
-
-        spreadsheets.append((spreadsheet, reference[0]))
-
-    return spreadsheets
+    return (spreadsheet, reference[0])
 
 
 def header_month_convertor(header_list: list):
@@ -296,10 +294,7 @@ def get_references_statistics(stacked_temperatures: dict, print_: bool = False):
             values_1=stacked_temperatures[0]["Temperature"],
             xaxis_2=spreadsheet["full_date"],
             values_2=spreadsheet["Temperature"],
-            print_=True if name == "Zurich" else False,
         )
-
-        print(display_dataframe["SI"])
 
         visual_alternate_annual_graph = dashboard.build_time_series_chart(
             id="annual-graph-references-" + str(key),
@@ -341,6 +336,179 @@ def get_references_statistics(stacked_temperatures: dict, print_: bool = False):
 
     references.sort(key=lambda k: k["score"])
     return references[0:5]
+
+
+def get_savukoski_statistics(stacked_temperatures: dict, print_: bool = False):
+    savukoski = get_alternate_spreadsheets(print_=print_)
+
+    spreadsheet = savukoski[0]
+    name = savukoski[1]
+
+    spreadsheet["full_date"] = create_date_column(
+        spreadsheet["Year"],
+        spreadsheet["Month"],
+        spreadsheet["Day"],
+    )
+    display_dataframe: pandas.DataFrame = pandas.concat(
+        [
+            spreadsheet["full_date"],
+            stacked_temperatures[0]["Temperature"],
+            stacked_temperatures[1]["Temperature"],
+            spreadsheet["Temperature"],
+        ],
+        axis=1,
+    )
+
+    display_dataframe.columns = ["full_date", "SI", "SI-Erreur", name]
+
+    stats_between_series = compute.stats_between_series(
+        xaxis_1=stacked_temperatures[0]["full_date"],
+        values_1=stacked_temperatures[0]["Temperature"],
+        xaxis_2=spreadsheet["full_date"],
+        values_2=spreadsheet["Temperature"],
+    )
+
+    visual_alternate_annual_graph = dashboard.build_time_series_chart(
+        id="annual-graph-savukoski",
+        dates=display_dataframe["full_date"],
+        data_list=[
+            display_dataframe["SI"],
+            display_dataframe["SI-Erreur"],
+            display_dataframe[name],
+        ],
+        layout={
+            "title": "Annual temperatures for " + name,
+            "xaxis": {"title": "Date"},
+            "yaxis": {"title": "Temperature in °C"},
+            "dragmode": "pan",
+        },
+        all_=True,
+    )
+
+    visual_alternate_comparision_summary = dashboard.build_card_group(
+        stats_between_series, "comparision-summary-savukoski"
+    )
+
+    visual_header = dash_html_components.H2(
+        "comparision with " + name + " for climate similarities", id="header-savukoski"
+    )
+
+    similarity_text = ""
+
+    if stats_between_series.get("dtw", 0) < 100:
+        similarity_text = (
+            "the climate is similar to "
+            + name
+            + ". We should test capitals in a cold environnement"
+        )
+    elif stats_between_series.get("dtw", 0) < 200:
+        similarity_text = (
+            "the climate has similarities to "
+            + name
+            + ". We should test capitals in a cold or temperate environnement"
+        )
+    elif stats_between_series.get("dtw", 0) < 300:
+        similarity_text = (
+            "the climate is a bit different from " + name + ". It might be temperate"
+        )
+    else:
+        similarity_text = (
+            "the climate is different from "
+            + name
+            + ". We should test capitals not in a cold environnement"
+        )
+
+    visual_similarities = dash_html_components.P(
+        "With a score of "
+        + str(round(stats_between_series.get("dtw", 0), 2))
+        + ", "
+        + similarity_text,
+    )
+    if print_:
+        print("dataframe", name, ":", stats_between_series.get("dtw", 0))
+
+    return {
+        "visual_header": visual_header,
+        "annual_graph": visual_alternate_annual_graph,
+        "comparision_summary": visual_alternate_comparision_summary,
+        "similarities": visual_similarities,
+        "score": stats_between_series.get("dtw", 0),
+        "name": name,
+    }
+
+
+def get_statistics_dtw_proof(stacked_temperatures: dict, print_: bool = False):
+    display_dataframe: pandas.DataFrame = pandas.concat(
+        [
+            stacked_temperatures[0]["full_date"],
+            stacked_temperatures[0]["Temperature"],
+            stacked_temperatures[1]["Temperature"],
+        ],
+        axis=1,
+    )
+
+    display_dataframe.columns = ["full_date", "SI", "SI-Erreur"]
+
+    stats_between_series = compute.stats_between_series(
+        xaxis_1=stacked_temperatures[0]["full_date"],
+        values_1=stacked_temperatures[0]["Temperature"],
+        xaxis_2=stacked_temperatures[1]["full_date"],
+        values_2=stacked_temperatures[1]["Temperature"],
+    )
+
+    visual_alternate_annual_graph = dashboard.build_time_series_chart(
+        id="annual-graph-dtw-proof",
+        dates=display_dataframe["full_date"],
+        data_list=[
+            display_dataframe["SI"],
+            display_dataframe["SI-Erreur"],
+        ],
+        layout={
+            "title": "Annual temperatures for SI and SI-Erreur",
+            "xaxis": {"title": "Date"},
+            "yaxis": {"title": "Temperature in °C"},
+            "dragmode": "pan",
+        },
+        all_=True,
+    )
+
+    visual_alternate_comparision_summary = dashboard.build_card_group(
+        stats_between_series, "comparision-summary-dtw-proof"
+    )
+
+    visual_header = dash_html_components.H2(
+        "Comparision between SI and SI-Erreur for dtw proof", id="header-dtw-proof"
+    )
+
+    similarity_text = ""
+
+    if stats_between_series.get("dtw", 0) < 50:
+        similarity_text = "the dtw statistic work for comparing two ordered datasets 🥳."
+    else:
+        similarity_text = "we should use an other comparative method."
+
+    visual_similarities = dash_html_components.Div(
+        children=[
+            dash_html_components.P(
+                "To test dtw effectiveness, we will test it on SI and SI-Error wich are very similar datasets. the result should state between 0 and 50. The more dtw is arround 0, the more similar datasets are",
+            ),
+            dash_html_components.P(
+                "With a score of "
+                + str(round(stats_between_series.get("dtw", 0), 2))
+                + ", "
+                + similarity_text,
+            ),
+        ],
+    )
+    if print_:
+        print("dtw test :", stats_between_series.get("dtw", 0))
+
+    return {
+        "visual_header": visual_header,
+        "annual_graph": visual_alternate_annual_graph,
+        "comparision_summary": visual_alternate_comparision_summary,
+        "similarities": visual_similarities,
+    }
 
 
 def get_statistics(sheet_name: str, print_: bool = False):
