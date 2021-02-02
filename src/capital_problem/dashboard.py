@@ -6,6 +6,8 @@ import dash_table
 import dash_bootstrap_components
 import pandas
 import plotly.graph_objects
+import json
+from decouple import config
 
 
 def build_app_report(
@@ -138,3 +140,39 @@ def build_time_series_chart(
 
 if __name__ == "__main__":
     build_app_report(dash_components_list=[]).run_server(debug=True)
+
+
+def map_display():
+    with open("src/capital_problem/assets/capitals.geojson") as file:
+        data = json.loads(file.read())
+
+    if data:
+        dataframe = pandas.DataFrame({"col1": ["FR", "GB"], "col2": [3, 4]})
+
+        thelist = data["features"]
+        locations = [item["id"] for item in thelist]
+
+        mapboxt = config("MAP_TOKEN")
+
+        figure = plotly.graph_objects.Figure(
+            plotly.graph_objects.Choropleth(
+                z=dataframe,  # This is the data.
+                geojson=data,
+                locations=locations,
+                colorscale="reds",
+                colorbar=dict(thickness=20, ticklen=3),
+                text=locations,
+                hoverinfo="all",
+                marker_line_width=1,
+                marker_opacity=0.75,
+            )
+        )
+        figure.update_layout(
+            height=300,
+            mapbox=dict(
+                accesstoken=mapboxt,
+                style="basic",
+            ),
+            margin={"r": 0, "t": 0, "l": 0, "b": 0},
+        )
+        return dash_core_components.Graph(id="yolo", figure=figure)

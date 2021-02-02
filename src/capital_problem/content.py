@@ -129,6 +129,11 @@ def get_all_capitals_spreadsheets(print_: bool = False) -> list:
         all_capitals_spreadsheets["Region"] == "Europe"
     ]
     # Filter on Capitals
+    all_capitals_spreadsheets = all_capitals_spreadsheets[
+        all_capitals_spreadsheets["Capital"].isin(
+            str(config("CAPITALS_LIST")).split(";")
+        )
+    ]
 
     # Rename month
     all_capitals_spreadsheets["Month"] = all_capitals_spreadsheets["Month"].apply(

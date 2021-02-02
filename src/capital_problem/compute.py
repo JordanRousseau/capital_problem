@@ -54,11 +54,37 @@ def stats_between_series(
     dataframe_values_1 = numpy.array([xaxis_arranged, unified["values_1"].values])
 
     dtw, d = similaritymeasures.dtw(dataframe_values_1, dataframe_values_2)
+
     frechet_dist = similaritymeasures.frechet_dist(
         dataframe_values_1, dataframe_values_2
     )
 
-    if print_:
-        print({"dtw": dtw, "frechet_dist": frechet_dist}, dataframe_values_2)
+    pcm = similaritymeasures.pcm(dataframe_values_1, dataframe_values_2)
 
-    return {"dtw": dtw, "frechet_dist": frechet_dist}
+    area = similaritymeasures.area_between_two_curves(
+        dataframe_values_1, dataframe_values_2
+    )
+
+    std = numpy.abs(
+        numpy.nanstd(dataframe_values_2[1]) - numpy.nanstd(dataframe_values_1[1])
+    )
+
+    if print_:
+        print(
+            {
+                "dtw": dtw,
+                "frechet_dist": frechet_dist,
+                "pcm": pcm,
+                "area": area,
+                "std": std,
+            },
+            dataframe_values_2,
+        )
+
+    return {
+        "dtw": dtw,
+        "frechet_dist": frechet_dist,
+        "pcm": pcm,
+        "area": area,
+        "std": std,
+    }
