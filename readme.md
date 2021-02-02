@@ -87,6 +87,9 @@ By doing that we assure a correlation between our different calculations, to get
 
 According to this different tests, we can guess that `Helsinki` is probably the origin of the climate data with a score of 0,41.
 
+The results are depending on data reliability and can be altered by the data interpolation on empty values.
+Moreover The top results are hand to hand, and it's hard to select one especially. And we don't know the year. 
+We chose a dataset with a large panel of cities, nevertheless some European capitals are not included in it, it could be so one capital that is missing in the dataset.
 ## Getting Started
 
 These instructions will get you a copy of the project up and running on your local machine for development and testing purposes. See deployment for notes on how to deploy the project on a live system.
