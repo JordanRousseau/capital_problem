@@ -382,7 +382,7 @@ def get_references_statistics(stacked_temperatures: dict, print_: bool = False):
             print("dataframe", reference.get("name"), ":", reference.get("score", 0))
 
     references.sort(key=lambda k: k["score"])
-    return references[-5:]
+    return references[:5]
 
 
 def get_savukoski_statistics(stacked_temperatures: dict, print_: bool = False):
