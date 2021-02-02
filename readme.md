@@ -85,7 +85,7 @@ Finally with these score (DTW, PCM and STD) we mapped them between 0 and 1 and w
 0 is the basis curve and 3 is the worst curve possible. 
 By doing that we assure a correlation between our different calculations, to get the best result possible (the lower one). Area under curve and frechet distance were skipped of this calculation because there redundant with DTW and PCM.
 
-According to this different tests, we can guess that `Helsinki` is probably the origin of the climate data.
+According to this different tests, we can guess that `Helsinki` is probably the origin of the climate data with a score of 0,41.
 
 ## Getting Started
 
