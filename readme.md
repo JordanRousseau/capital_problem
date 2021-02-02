@@ -1,7 +1,87 @@
 # Capital Problem
 
-Compare two climate datasets to find the european capital for wich tamperatures are provided in the file `Climate.xlsx`.
+Compare two climate datasets to find the european capital for which temperatures are provided in the file `Climate.xlsx`.
 We will use the file `Savukoskikirkonkyla.xlsx` from open data as a reference.
+
+Many steps were developed on this project
+
+### Step 1: Climate SI Sheet summary.
+
+First one was to establish a mean, a standard deviation and identify Maximum and Minimum in temperature data.
+We used the library numpy functions to do those different calculations
+
+### Step 2: Climate SI Sheet Graphs.
+The second One was to do Two different graphs:
+ - A monthly graph, to watch the temperature evolution for all months
+ - An annual graph, to watch the temperature evolution on the year
+
+To do that, we used the library Dash, made to made interfaces and host a local web server. This library includes Plotly, a perfect solution for graph generation. 
+We modified the dataframe, the goal was to get a dataframe where each row will represent a date and a temperature. So we used the pandas melt function. It allowed us to create the day, month and Temperature columns.
+Then we aggregated the date in a full-date. So we could use it in a graph.
+
+### Step 3 : Setup a 30 days zoom
+We made the mentioned graphs, and thanks to the Dash callbacks we setup a special zoom on annual graphs. We zoomed on a selected point and the 15 days before and after that date.
+
+### Step 4: Same ways on SI-Erreur sheet.
+And we did the same process on SI-erreur spreadsheet.
+
+### Step 5: Fix the SI-Erreur wrong values.
+
+But, we had to clean the differents errors values as "0xFFFF" or "sun" which are incorrect temperature.
+To achieve this goal, we used the method to_numeric from panda library. This method allowed us to convert each temperature value in a numeric one, and the non-numeric are automatically convert in NaN (Not a number). Then we could use a magic function from panda `interpolate`. Which fill the NaN values with a new calculated value coinciding with the previous and next values. We did used the base mode (Linear), because we didn't need a complex calculated value as temperature vary by a few degrees.
+
+Some values were still strange, as 48 degrees the day before and the day after were 15 degrees.
+Its one of the Outliers we saw. To fix them, there are few methods we can use. We simply Checked if the Temperature difference, between the month and the current temperature was more than the threshold we fixed. We fixed it at 10 degrees for the moment.
+We're not expert in climate analysis, but we fought it was a too high difference to consider it as a true value.
+
+### Step 6 : Determine the climate of the SI / SI-Erreur sheets.
+Next step was to determine the climate in comparison with Savukoski kirkonliya's climate data.
+We did an algorithm to do dynamic time wrapping(dtw). It's a good solution when we need to measure similarities between two temporal sequences. 
+
+First of all we did the comparision between SI and SI-Erreur sheets to get a reference. We determine a dtw score of aproximatively, `4,5`. That proves the dtw is accurate, we got some differences on some values between both sheets. We can as well control it throught the comparision graphs.
+
+The second things we did was to make this dtw indicator on Savukoski kirkonliya's data. We got approximatively a dtw score of 147,6. Which is a small score, we made a graph to check the evolution of the Differents curve (SI, SI-erreur and Savukoski), so we were able to see the curves were similar but many temperatures are different the same days, nevertheless it is only a few degrees. So we could establish that the SI data came from a `cold climate` country, as Scandinavian countries or Russia.
+
+### Step 7: Compare with European capitals, and find the best candidate.
+
+Then to prove our feelings and thoughts, we tried to do the same process with different cities in Europe to determinate the best candidate. 
+We found a dataset on [Kaggle](https://www.kaggle.com/sudalairajkumar/daily-temperature-of-major-cities) which was containing many cities temperature over many years.
+
+First of all we filter the data on the columns we needed, City, Temperature, Year, Month and Day. Then we only selected data on the Year 2018 and Some Cities we chose (capitals in Europe).
+
+Then we could do the same process as before. We calculated, in an automated way, the dtw score for every Cities, and establish the graphs.
+
+So we could determine the closest dtw score was Moscow with approximatively 99. Followed by Oslo, Riga, Helsinki and Stockholm. (We took the cities with maximum 20 score more)
+
+DTW results: 
+- Moscow: 99
+- Oslo: 104
+- Riga: 109
+- Helsinki: 111
+- Stockholm: 115 
+
+`Moscow` is the best candidate with dtw but the results are really close and we should confirm this assumption, with another method as calculating the area between curves or using PCM (Partial Curve Mapping).
+
+When using PCM method we found that `Moscow` had a much Higher score than `Helsinki` or `Stockholm`(Moscow: 0,66 , Helsinki: 0,41). 
+
+PCM results : 
+- Riga: 0,62
+- Oslo: 0,68 
+- Helsinki: 0,41
+- Moscow: 0,66
+- Stockholm: 0,37
+
+It can therefore be concluded that the most likely European capital for the origin of climate data is one of the following cities: `Helsinki`, `Oslo`, `Riga`, `Stockholm` or `Moscow`. Based on the equilibrium of Dtw and the PCM and PCM `Helsinki` and `Stockholm` are the best candidates.
+
+When doing standard deviation differences between city and SI sheet, Helsinki is the lowest score.
+
+STD difference score: 
+- Helsinki: 0,11 
+- Oslo: 0,12
+
+`Helsinki` and `Oslo` seems to be good candidates to be the capital when analysing STD differences
+
+According to this different tests, we can guess that `Helsinki` is probably the origin of the climate data.
 
 ## Getting Started
 
@@ -106,7 +186,10 @@ A step by step series of examples that tell you how to get a development env run
    CLIMATE_PATH = .data/Climat.xlsx
    REFERENCE_CLIMATE_PATH = .data/Savukoski kirkonkyla.xlsx
    ```
-
+7. **Running the app**
+   ```sh
+   python src/capital_problem/core.py
+   ``` 
 ## Running the tests
 
 You can run the tests with the command:
