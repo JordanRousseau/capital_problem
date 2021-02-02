@@ -146,6 +146,11 @@ def get_all_capitals_spreadsheets(print_: bool = False) -> list:
         subset=["Year", "Month", "Day", "Capital"]
     )
 
+    # Remove Unset temperatures (99F° according to the dataset)
+    all_capitals_spreadsheets.loc[
+        all_capitals_spreadsheets["Temperature"] <= -99, "Temperature"
+    ] = numpy.nan
+
     # Split Dataframe on cities
     def map_dataframe(tuple_: tuple):
         # Remove outliers
@@ -377,7 +382,7 @@ def get_references_statistics(stacked_temperatures: dict, print_: bool = False):
             print("dataframe", reference.get("name"), ":", reference.get("score", 0))
 
     references.sort(key=lambda k: k["score"])
-    return references[0:5]
+    return references[-5:]
 
 
 def get_savukoski_statistics(stacked_temperatures: dict, print_: bool = False):
